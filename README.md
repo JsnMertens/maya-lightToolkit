@@ -1,2 +1,2 @@
 # jmLightToolkit
-Free 
+Free lightToolkit for your personal project
