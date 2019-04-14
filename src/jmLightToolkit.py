@@ -26,9 +26,9 @@ LOOK_WINDOW = None
 if __appDir__ not in sys.path:
     sys.path.insert(0, __appDir__)
 
-from resourcesLightToolkit import jmLightToolkitUI
+import jmLightToolkitUI
 reload (jmLightToolkitUI)
-from resourcesLightToolkit.jmLightToolkitUI import Ui_root
+from jmLightToolkitUI import Ui_root
 
 
 class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
@@ -137,14 +137,14 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.lgt_attrs = self.lgt_attrs_default + self.lgt_attrs_arnold
 
         # Icons
-        self.icon_blank = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_blank.png"))
-        self.icon_hierarchy_off = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_hierarchy_off.png"))
-        self.icon_hierarchy_on = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_hierarchy_on.png"))
-        self.icon_window_off = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_window_off.png"))
-        self.icon_window_on = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_window_on.png"))
-        self.icon_refresh = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_refresh.png"))
-        self.icon_inverse = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_inverse.png"))
-        self.icon_select = QtGui.QIcon(os.path.join(__appDir__, "resourcesLightToolkit", "icon_select.png"))
+        self.icon_blank = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_blank.png"))
+        self.icon_hierarchy_off = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_hierarchy_off.png"))
+        self.icon_hierarchy_on = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_hierarchy_on.png"))
+        self.icon_window_off = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_window_off.png"))
+        self.icon_window_on = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_window_on.png"))
+        self.icon_refresh = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_refresh.png"))
+        self.icon_inverse = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_inverse.png"))
+        self.icon_select = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_select.png"))
 
         # Connect UI
         self.pushButton_soloLights.clicked.connect(self.soloLights)
