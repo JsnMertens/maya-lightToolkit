@@ -6,12 +6,6 @@ jmLightToolkit is a free toolkit in python I have written for managing lighting 
 Feel free to use it in your own projects or in production. (Optimized for MtoA)
 """
 
-__author__      = 'Jason Mertens'
-__copyright__   = 'Copyright (c) 2019 Jason Mertens'
-__license__     = 'MIT'
-__version__     = '1.0'
-__email__       = 'mertens.jas@gmail.com'
-
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 from PySide2 import QtWidgets, QtGui, QtCore
 from maya import OpenMayaUI as omui
@@ -23,6 +17,12 @@ import os
 import sys
 import math
 import re
+
+__author__      = 'Jason Mertens'
+__copyright__   = 'Copyright (c) 2019 Jason Mertens'
+__license__     = 'MIT'
+__version__     = '1.0'
+__email__       = 'mertens.jas@gmail.com'
 
 MAIN_WINDOW = None
 LOOK_WINDOW = None
