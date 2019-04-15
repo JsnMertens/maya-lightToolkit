@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-""" A free toolkit in python for managing lighting in Maya. (Optimized for MtoA) """
+"""
+jmLightToolkit is a free toolkit in python I have written for managing lighting in Maya for my personal projects.
+Feel free to use it in your own projects or in production. (Optimized for MtoA)
+"""
+
+__author__      = 'Jason Mertens'
+__copyright__   = 'Copyright (c) 2019 Jason Mertens'
+__license__     = 'MIT'
+__version__     = '1.0'
+__email__       = 'mertens.jas@gmail.com'
 
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 from PySide2 import QtWidgets, QtGui, QtCore
@@ -15,19 +24,14 @@ import sys
 import math
 import re
 
-__author__  = 'Jason Mertens'
-__email__   = 'mertens.jas@gmail.com'
-__license__ = 'MIT'
-__version__ = '1.0'
-__appDir__  = os.path.dirname(os.path.abspath(__file__))
-
 MAIN_WINDOW = None
 LOOK_WINDOW = None
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger(__name__)
 
-if __appDir__ not in sys.path:
-    sys.path.insert(0, __appDir__)
+if PROJECT_DIR not in sys.path:
+    sys.path.insert(0, PROJECT_DIR)
 
 import jmLightToolkitUI
 reload (jmLightToolkitUI)
@@ -35,7 +39,10 @@ from jmLightToolkitUI import Ui_root
 
 
 class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
-    """ A free toolkit in python for managing lighting in Maya. (Optimized for MtoA) """
+    """
+    jmLightToolkit is a free toolkit in python I have written for managing lighting in Maya for my personal projects.
+    Feel free to use it in your own projects or in production. (Optimized for MtoA)
+    """
     def __init__(self, parent=None):
         """ Initialize JMLightToolkit """
         super(JMLightToolkit, self).__init__(parent=parent)
@@ -119,7 +126,6 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         if not pm.pluginInfo("mtoa", q=True, loaded=True):
             self.lgt_types_arnold = []
             self.lgt_attrs_arnold = []
-
             self.label_mtoaUtils.hide()
             self.pushButton_arnoldRenderView.hide()
             self.pushButton_transfertLightFilters.hide()
@@ -140,14 +146,15 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.lgt_attrs = self.lgt_attrs_default + self.lgt_attrs_arnold
 
         # Icons
-        self.icon_blank = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_blank.png"))
-        self.icon_hierarchy_off = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_hierarchy_off.png"))
-        self.icon_hierarchy_on = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_hierarchy_on.png"))
-        self.icon_window_off = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_window_off.png"))
-        self.icon_window_on = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_window_on.png"))
-        self.icon_refresh = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_refresh.png"))
-        self.icon_inverse = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_inverse.png"))
-        self.icon_select = QtGui.QIcon(os.path.join(__appDir__, "resources", "icons", "icon_select.png"))
+        icons_dir = os.path.join(PROJECT_DIR, "resources", "icons")
+        self.icon_blank = QtGui.QIcon(os.path.join(icons_dir, "icon_blank.png"))
+        self.icon_hierarchy_off = QtGui.QIcon(os.path.join(icons_dir, "icon_hierarchy_off.png"))
+        self.icon_hierarchy_on = QtGui.QIcon(os.path.join(icons_dir, "icon_hierarchy_on.png"))
+        self.icon_window_off = QtGui.QIcon(os.path.join(icons_dir, "icon_window_off.png"))
+        self.icon_window_on = QtGui.QIcon(os.path.join(icons_dir, "icon_window_on.png"))
+        self.icon_refresh = QtGui.QIcon(os.path.join(icons_dir, "icon_refresh.png"))
+        self.icon_inverse = QtGui.QIcon(os.path.join(icons_dir, "icon_inverse.png"))
+        self.icon_select = QtGui.QIcon(os.path.join(icons_dir, "icon_select.png"))
 
         # Connect UI
         self.pushButton_soloLights.clicked.connect(self.soloLights)
@@ -1942,7 +1949,9 @@ def promptDialogMtoA():
     """ Prompt a dialog and ask if you want load MtoA. """
     if not pm.pluginInfo("mtoa", q=True, loaded=True):
         message = "MtoA is not loaded, do you want to load it?"
-        status = pm.confirmDialog(title=__name__, message=message, button=['Yes', 'No'], defaultButton='Yes', cancelButton='No', dismissString='No')
+        status = pm.confirmDialog(title=__name__, message=message, button=['Yes', 'No'],
+            defaultButton='Yes', cancelButton='No', dismissString='No')
+
         if status == "Yes":
             try:
                 pm.loadPlugin("mtoa")
@@ -2007,6 +2016,6 @@ def main(restore=False):
     else:
         MAIN_WINDOW.show(dockable=True, minWidth=300, width=400, widthSizingProperty='minimum',
             uiScript='import jmLightToolkit\njmLightToolkit.main(restore=True)',
-            closeCallback='import jmLightToolkit\njmLightToolkit._mainWindowClosed()')
+            closeCallback='import jmLightToolkit\njmLightToolkit._mainWindowClosed()' )
 
     return MAIN_WINDOW
