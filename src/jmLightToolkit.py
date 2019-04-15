@@ -235,7 +235,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.pushButton_selectChildren.clicked.connect(self.selectChildren)
         self.pushButton_selectNotIlluminatingLights.clicked.connect(self.selectNotIlluminatingLights)
         self.pushButton_deleteUnusedBlocker.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightBlocker"))
-        self.pushButton_deleteUnusedDecay.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightDecay"))
+        self.pushButton_deleteUnusedDecay.clicked.connect(self.deleteSafelyLightFilter, "aiLightDecay"))
 
         # Pre-build Methods
         self.__populateComboBoxAttributes()
@@ -1663,25 +1663,27 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         logger.info("%s selected" % [node.name() for node in out_transforms])
         return out_transforms
 
-    @_wrapperUndoChunck
-    def deleteSafelyLightFilter(self, filter_):
-        """ Delete safely unused Arnold light filter.
+    def getUnusedLightFilters(self, ai_filter):
+        """ Get light filters disconnected from all and light filters with null value.
 
             Args:
-                filter_(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'
+                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'.
+
+            Returns:
+                (dict) Disconnect and null light filters.
         """
         # Check input attributes
-        if filter_ not in ["aiLightDecay", "aiLightBlocker"]:
+        if ai_filter not in ["aiLightDecay", "aiLightBlocker"]:
             logger.error("'aiLightDecay' or 'aiLightBlocker'")
             return None
 
         # Get filters
-        all_lightfilters = pm.ls(typ=filter_)
+        all_lightfilters = pm.ls(type=ai_filter)
         if not all_lightfilters:
-            logger.warning("No %s found" % filter_)
+            logger.warning("No %s found" % ai_filter)
             return None
 
-        # First Step, Get disconnected filters
+        # Get disconnected filters
         disconnected_filters = []
         connected_filters = []
         for lightfilter in all_lightfilters:
@@ -1690,20 +1692,45 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
             else:
                 connected_filters.append(lightfilter)
 
-        # Second step, Get filters with null value
-        null_filter = []
-        if filter_ == "aiLightBlocker":
+        # Get filters with null value
+        null_filters = []
+        if ai_filter == "aiLightBlocker":
             for blocker in connected_filters:
                 if not blocker.density.get():
-                    null_filter.append(blocker)
+                    null_filters.append(blocker)
 
-        if filter_ == "aiLightDecay":
+        if ai_filter == "aiLightDecay":
             for decay in connected_filters:
                 if not decay.useNearAtten.get() and not decay.useFarAtten.get():
-                    null_filter.append(decay)
+                    null_filters.append(decay)
 
-        # Third step, disconnect null filters from light
-        for lightfilter in null_filter:
+
+        if not disconnected_filters and not null_filters:
+            logger.info("All filters is used.")
+            return None
+
+        else:
+            return {"disconnected" : disconnected_filters, "null" : null_filters, "type" : ai_filter}
+
+    @_wrapperUndoChunck
+    def deleteSafelyLightFilter(self, ai_filter):
+        """ Delete safely unused Arnold light filter.
+
+            Args:
+                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'
+        """
+        # Check input attributes
+        if ai_filter not in ["aiLightDecay", "aiLightBlocker"]:
+            logger.error("'aiLightDecay' or 'aiLightBlocker'")
+            return None
+
+        # Get unused light filters
+        lightfilters = self.getUnusedLightFilters(ai_filter)
+        if lightfilters is None:
+            return
+
+        # Disconnect null filters from light
+        for lightfilter in lightfilters["null"]:
             # Get connected lights
             lights = pm.connectionInfo("%s.message" % lightfilter, dfs=True)
             lights = [connection for connection in lights if "aiFilters" in connection]
@@ -1726,8 +1753,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
                     i += 1
 
-        # Fourth step, delete unused and null filters
-        deleted_filters = disconnected_filters + null_filter
+        # Delete unused and null filters
+        deleted_filters = lightfilters["disconnected"] + lightfilters["null"]
         for lightfilter in deleted_filters:
             if pm.objExists(lightfilter):
                 try:
@@ -1735,8 +1762,49 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
                 except AttributeError :
                     pm.delete(lightfilter)
 
-        logger.info("Safely deleted {0} : {1}".format(filter_, deleted_filters))
+        logger.info("Safely deleted {0} : {1}".format(ai_filter, deleted_filters))
         return deleted_filters
+
+    def __listUnusedLightFiltersUI(self, ai_filter):
+        """ List Unused light filters in UI.
+
+            Args:
+                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'
+        """
+        # Get unused light filters
+        lightfilters = self.getUnusedLightFilters(ai_filter)
+        if lightfilters is None:
+            return None
+
+        # Delete UI
+        if pm.window("jmUnusedLightFilters", exists=True):
+            pm.deleteUI("jmUnusedLightFilters")
+
+        pm.window("jmUnusedLightFilters", t="Unused light filters", w=250, h=400, s=False)
+        pm.columnLayout(adj=True)
+        #list_view_disconnected = pm.textScrollList("scroll",
+        #    allowMultiSelection=True,
+        #    append=lightfilters["disconnected"],
+        #    height=300,
+        #    selectIndexedItem=True )
+        #    #selectCommand=connectSlider )
+
+        list_view_null = pm.textScrollList("scroll",
+            allowMultiSelection=True,
+            append=lightfilters["null"],
+            height=300,
+            selectIndexedItem=True )
+            #selectCommand=connectSlider )
+
+        popup = pm.popupMenu(parent=list_view, ctl=False, button=3)
+        #pm.menuItem(i="refresh.png", l='Reload list', c=reloadList)
+        #pm.menuItem("check", label="ignore safelocked node", checkBox=False, c=connectSlider )
+
+        pm.columnLayout(adj=True)
+
+        #connectSlider()
+        pm.showWindow()
+
 
     def selectNotIlluminatingLights(self):
         """ Select not Illuminating lights """
@@ -1930,6 +1998,19 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self.setWindowTitle("NO LIGHT")
 
 
+def promptDialogMtoA():
+    """ Prompt a dialog and ask if you want load MtoA. """
+    if not pm.pluginInfo("mtoa", q=True, loaded=True):
+        message = "MtoA is not loaded, do you want to load it?"
+        status = pm.confirmDialog(title=__name__, message=message, button=['Yes', 'No'],
+            defaultButton='Yes', cancelButton='No', dismissString='No')
+
+        if status == "Yes":
+            try:
+                pm.loadPlugin("mtoa")
+            except RuntimeError,e:
+                logger.warning(e)
+
 def _mainWindowClosed():
     """ Close Callback JMLightToolkit UI. """
     global MAIN_WINDOW
@@ -1944,19 +2025,6 @@ def _lookThroughWindowClosed():
     if LOOK_WINDOW:
         LOOK_WINDOW.deleteLookedThroughCam()
         LOOK_WINDOW = None
-
-def promptDialogMtoA():
-    """ Prompt a dialog and ask if you want load MtoA. """
-    if not pm.pluginInfo("mtoa", q=True, loaded=True):
-        message = "MtoA is not loaded, do you want to load it?"
-        status = pm.confirmDialog(title=__name__, message=message, button=['Yes', 'No'],
-            defaultButton='Yes', cancelButton='No', dismissString='No')
-
-        if status == "Yes":
-            try:
-                pm.loadPlugin("mtoa")
-            except RuntimeError,e:
-                logger.warning(e)
 
 def createLookThroughWindow(restore=False):
     """ Run LookThrough UI. """
