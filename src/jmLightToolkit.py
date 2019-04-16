@@ -1506,7 +1506,6 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_Widget_Root
             # Set Decay ON
             use_decay = "use%sAtten" % decay_type.capitalize()
             decay.attr(use_decay).set(1)
-            # Append group for LOG and return
             out.append(light)
 
         if out:
@@ -1681,12 +1680,12 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_Widget_Root
 
     def selectChildren(self):
         """ Select All tranforms children from selection """
-        include = self.lgt_types + ["mesh", "pgYetiShape"]
+        include = self.lgt_types + ["mesh"]
         selected = pm.selected()
 
         # Return if selection is empty
         if not selected:
-            LOG.warning("Nothing selected")
+            logger.warning("Nothing selected")
             return None
 
         # Get shapes
