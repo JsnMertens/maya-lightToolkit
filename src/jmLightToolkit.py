@@ -26,6 +26,7 @@ __email__       = 'mertens.jas@gmail.com'
 
 MAIN_WINDOW = None
 LOOK_WINDOW = None
+CUSTOM_IDX  = 32
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger(__name__)
@@ -40,10 +41,7 @@ from jmLightToolkitUI import Ui_Widget
 
 
 class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
-    """
-    jmLightToolkit is a free toolkit in python I have written for managing lighting in Maya for my personal projects.
-    Feel free to use it in your own projects or in production. (Optimized for MtoA)
-    """
+    """ Main Light Toolkit UI. """
     def __init__(self, parent=None):
         """ Initialize JMLightToolkit """
         super(JMLightToolkit, self).__init__(parent=parent)
@@ -122,6 +120,12 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
             "translateX", "translateY", "translateZ",
             "rotateX", "rotateY", "rotateZ",
             "scaleX", "scaleY", "scaleZ" ]
+
+        self.optimize_attrs = [
+            "aiSamples",
+            "aiIndirect",
+            "aiExposure",
+            "aiRadius" ]
 
         # Clear list and sort UI if MtoA is not loaded
         if not pm.pluginInfo("mtoa", q=True, loaded=True):
@@ -259,6 +263,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.__displayRadiusCSS()
         self.__displayBlockerCSS()
         self.__displayDecayCSS()
+        self.__populateOptimizeComboBox()
 
     def keyPressEvent(self, event):
         """ Keyboard mapping. """
@@ -1818,7 +1823,6 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         #connectSlider()
         pm.showWindow()
 
-
     def selectNotIlluminatingLights(self):
         """ Select not Illuminating lights """
         not_illuminating = []
@@ -1832,6 +1836,89 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
         pm.select(not_illuminating)
         logger.info("%s illuminate nothing" % [lgt.name() for lgt in not_illuminating])
+
+    # ---------------------- #
+    #        OPTIMIZE        #
+    # ---------------------- #
+
+    def optilightPopulateGrid(self):
+        """ Populate 'Optimize lights' grid from light attributes """
+        attribute_name = str(self.comboBox_attributes.currentText())
+        for item in self.sortLightAttributes(attribute_name):
+            item_ui = LightWidgetItem(item, self.populateGrid)
+
+            list_widget_item = QtWidgets.QListWidgetItem()
+            list_widget_item.setSizeHint(item_ui.sizeHint())
+            list_widget_item.setData(CUSTOM_INDEX, item)
+
+            self.listWidget.addItem(list_widget_item)
+            self.listWidget.setItemWidget(list_widget_item, item_ui)
+
+    def optilightSortLightAttributes(self, attr_):
+        """ Sort lights attributes values.
+
+            Args:
+                attr_ (str): Attribute to sort.
+        """
+        self.listWidget.clear()
+        min_value = self.spinBox_min.value()
+        max_value = self.spinBox_max.value()
+
+        out = []
+        for light in self._getAllLights(get_shapes=True):
+            value = pm.getAttr("%s.%s" % (light, attr_))
+            if (value >= min_value) and (value <= max_value):
+                light_data = {}
+                light_data["lightname"] = light.name()
+                light_data["transform"] = light.getParent().name()
+                light_data["type"] = pm.nodeType(light.name())
+                light_data["attribute"] = attr_
+                light_data["value"] = value
+                out.append(light_data)
+
+            elif (max_value == 11) and (value >= 10):
+                light_data = {}
+                light_data["lightname"] = light.name()
+                light_data["transform"] = light.getParent().name()
+                light_data["type"] = pm.nodeType(light.name())
+                light_data["attribute"] = attr_
+                light_data["value"] = value
+                out.append(light_data)
+
+    def optilightSelectLightsFromList(self):
+        """ Select Lights from selected 'Optimize lights' list. """
+        # Get lightname from list
+        lights = []
+        for item in self.listWidget.selectedItems():
+            datas = item.data(CUSTOM_IDX)
+            lights.append(pm.PyNode(datas["lightname"]))
+
+        # Get transform
+        lights_transform = [node.getParent() for node in lights]
+        pm.select(lights_transform)
+
+        lgts_name = [lgts.name() for lgts in lights_transform]
+        logger.info("Select : %s" % lgts_name)
+
+    def setMultiplesValuesToOptimizeList(self):
+        """ Set multiples values from item selected in OptimizeLight list. """
+        value = self.doubleSpinBox_value.value()
+        lights = []
+
+        for item in self.listWidget.selectedItems():
+            datas = item.data(CUSTOM_IDX)
+            light_node = pm.PyNode("%s.%s" % (datas["lightname"], datas["attribute"]))
+            lights.append(light_node)
+
+        for light in lights:
+            light.set(value)
+
+        logger.info("lights : %s, value : %s" % (lights, value))
+
+    def __populateOptimizeComboBox(self):
+        """ Populate OpitimizeLgiht combo box attributes. """
+        for attr in self.optimize_attrs:
+            self.comboBox_attributes.addItem(self.icon_blank, attr)
 
     def _getAllLights(self, get_shapes=False):
         """ Get all standard/Arnold lights from scene.
@@ -1922,6 +2009,30 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
         return node
 
+class JMLightOptimizeWidgetItem(QtWidgets.QWidget, Ui_Widget):
+    """ Custom OptimizeLight widget appended to UI. """
+    def __init__(self, datas, populate_function):
+        super(JMLightOptimizeWidgetItem, self).__init__()
+        self.setupUi(self)
+        self.label_lightname.setText(datas["transform"])
+        self.label_attribute.setText("%s :" % datas["attribute"].upper())
+        self.doubleSpinBox_attributeValue.setValue(datas["value"])
+        self.populate_parent = populate_function
+
+        # ATTRIBUTES
+        self.lightname = datas["lightname"]
+        self.attribute = datas["attribute"]
+        self.light_type = datas["type"]
+        self.current_value = datas["value"]
+        self.node = pm.PyNode(self.lightname)
+        self.transform_node = self.node.getParent()
+
+        # CONNECT UI
+        self.pushButton_Icon.clicked.connect(self.selectLight)
+        self.pushButton_Icon.setIcon(QtGui.QIcon(os.path.join(PROJECT_DIR, RESOURCES_DIR, "%s.svg" % self.light_type)))
+        self.pushButton_Icon.setStyleSheet("QPushButton{border-radius:20px; background-color: #5d5d5d; border:5px #14E696;} QPushButton:hover{border-radius:20px; background-color: #949494; border:5px #14E696;}")
+
+        self.pushButton_setValue.clicked.connect(self.setValue)
 
 class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     """ Create Look through window. """
