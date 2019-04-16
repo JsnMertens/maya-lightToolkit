@@ -36,6 +36,7 @@ if PROJECT_DIR not in sys.path:
 import jmLightToolkitUI
 reload (jmLightToolkitUI)
 from jmLightToolkitUI import Ui_root
+from jmLightToolkitUI import Ui_Widget
 
 
 class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
@@ -146,15 +147,27 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.lgt_attrs = self.lgt_attrs_default + self.lgt_attrs_arnold
 
         # Icons
-        icons_dir = os.path.join(PROJECT_DIR, "resources", "icons")
-        self.icon_blank = QtGui.QIcon(os.path.join(icons_dir, "icon_blank.png"))
-        self.icon_hierarchy_off = QtGui.QIcon(os.path.join(icons_dir, "icon_hierarchy_off.png"))
-        self.icon_hierarchy_on = QtGui.QIcon(os.path.join(icons_dir, "icon_hierarchy_on.png"))
-        self.icon_window_off = QtGui.QIcon(os.path.join(icons_dir, "icon_window_off.png"))
-        self.icon_window_on = QtGui.QIcon(os.path.join(icons_dir, "icon_window_on.png"))
-        self.icon_refresh = QtGui.QIcon(os.path.join(icons_dir, "icon_refresh.png"))
-        self.icon_inverse = QtGui.QIcon(os.path.join(icons_dir, "icon_inverse.png"))
-        self.icon_select = QtGui.QIcon(os.path.join(icons_dir, "icon_select.png"))
+        getIcon = lambda icon_name : QtGui.QIcon(os.path.join(PROJECT_DIR, "resources", "icons", icon_name))
+        self.icon_blank = getIcon("icon_blank.png")
+        self.icon_hierarchy_off = getIcon("icon_hierarchy_off.png")
+        self.icon_hierarchy_on = getIcon("icon_hierarchy_on.png")
+        self.icon_window_off = getIcon("icon_window_off.png")
+        self.icon_window_on = getIcon("icon_window_on.png")
+        self.icon_refresh = getIcon("icon_refresh.png")
+        self.icon_inverse = getIcon("icon_inverse.png")
+        self.icon_select = getIcon("icon_select.png")
+        self.icon_spotlight = getIcon("spotLight.svg")
+        self.icon_pointLight = getIcon("pointLight.svg")
+        self.icon_directionalLight = getIcon("directionalLight.svg")
+        self.icon_areaLight = getIcon("areaLight.svg")
+        self.icon_volumeLight = getIcon("volumeLight.svg")
+        self.icon_ambientLight = getIcon("ambientLight.svg")
+        self.icon_aiAreaLight = getIcon("aiAreaLight.svg")
+        self.icon_aiLightPortal = getIcon("aiLightPortal.svg")
+        self.icon_aiMeshLight = getIcon("aiMeshLight.svg")
+        self.icon_aiPhotometricLight = getIcon("aiPhotometricLight.svg")
+        self.icon_aiPhysicalLight = getIcon("aiPhysicalLight.svg")
+        self.icon_aiSkyDomeLight = getIcon("aiSkyDomeLight.svg")
 
         # Connect UI
         self.pushButton_soloLights.clicked.connect(self.soloLights)
@@ -235,7 +248,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.pushButton_selectChildren.clicked.connect(self.selectChildren)
         self.pushButton_selectNotIlluminatingLights.clicked.connect(self.selectNotIlluminatingLights)
         self.pushButton_deleteUnusedBlocker.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightBlocker"))
-        self.pushButton_deleteUnusedDecay.clicked.connect(self.deleteSafelyLightFilter, "aiLightDecay"))
+        self.pushButton_deleteUnusedDecay.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightDecay"))
 
         # Pre-build Methods
         self.__populateComboBoxAttributes()
