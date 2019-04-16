@@ -1429,7 +1429,7 @@ class Ui_widget_unusedFiltersList(object):
 class Ui_widget_unusedFiltersItem(object):
     def setupUi(self, widget_unusedFiltersItem):
         widget_unusedFiltersItem.setObjectName("widget_unusedFiltersItem")
-        widget_unusedFiltersItem.resize(300, 100)
+        widget_unusedFiltersItem.resize(300, 50)
         self.horizontalLayout = QtWidgets.QHBoxLayout(widget_unusedFiltersItem)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label_filterName = QtWidgets.QLabel(widget_unusedFiltersItem)

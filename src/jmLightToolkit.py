@@ -260,8 +260,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         self.pushButton_selectChildren.clicked.connect(self.selectChildren)
         self.pushButton_selectNotIlluminatingLights.clicked.connect(self.selectNotIlluminatingLights)
-        self.pushButton_deleteUnusedBlocker.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightBlocker"))
-        self.pushButton_deleteUnusedDecay.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightDecay"))
+        self.pushButton_deleteUnusedBlocker.clicked.connect(partial(JMUnusedLightFiltersUI, "aiLightBlocker", self.getUnusedLightFilters, self.deleteSafelyLightFilter))
+        self.pushButton_deleteUnusedDecay.clicked.connect(partial(JMUnusedLightFiltersUI, "aiLightDecay", self.getUnusedLightFilters, self.deleteSafelyLightFilter))
 
         self.horizontalSlider_lightOptimizer_min.valueChanged[int].connect(self.spinBox_lightOptimizer_min.setValue)
         self.spinBox_lightOptimizer_min.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_min.setValue)
@@ -1705,24 +1705,24 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         logger.info("%s selected" % [node.name() for node in out_transforms])
         return out_transforms
 
-    def getUnusedLightFilters(self, ai_filter):
+    def getUnusedLightFilters(self, filter_name):
         """ Get light filters disconnected from all and light filters with null value.
 
             Args:
-                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'.
+                filter_name(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'.
 
             Returns:
                 (dict) Disconnect and null light filters.
         """
         # Check input attributes
-        if ai_filter not in ["aiLightDecay", "aiLightBlocker"]:
+        if filter_name not in ["aiLightDecay", "aiLightBlocker"]:
             logger.error("'aiLightDecay' or 'aiLightBlocker'")
             return None
 
         # Get filters
-        all_lightfilters = pm.ls(type=ai_filter)
+        all_lightfilters = pm.ls(type=filter_name)
         if not all_lightfilters:
-            logger.warning("No %s found" % ai_filter)
+            logger.warning("No %s found" % filter_name)
             return None
 
         # Get disconnected filters
@@ -1736,12 +1736,12 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Get filters with null value
         null_filters = []
-        if ai_filter == "aiLightBlocker":
+        if filter_name == "aiLightBlocker":
             for blocker in connected_filters:
                 if not blocker.density.get():
                     null_filters.append(blocker)
 
-        if ai_filter == "aiLightDecay":
+        if filter_name == "aiLightDecay":
             for decay in connected_filters:
                 if not decay.useNearAtten.get() and not decay.useFarAtten.get():
                     null_filters.append(decay)
@@ -1752,31 +1752,25 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             return None
 
         else:
-            return {"disconnected" : disconnected_filters, "null" : null_filters, "type" : ai_filter}
+            return {"disconnected" : disconnected_filters, "null" : null_filters, "type" : filter_name}
 
-    @_wrapperUndoChunck
-    def deleteSafelyLightFilter(self, ai_filter):
+    def deleteSafelyLightFilter(self, filters):
         """ Delete safely unused Arnold light filter.
 
             Args:
-                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'
+                filters(dict): Filter type and List of disconnected/null filters that you want to delete.
         """
         # Check input attributes
-        if ai_filter not in ["aiLightDecay", "aiLightBlocker"]:
+        if filters["type"] not in ["aiLightDecay", "aiLightBlocker"]:
             logger.error("'aiLightDecay' or 'aiLightBlocker'")
             return None
 
-        # Get unused light filters
-        lightfilters = self.getUnusedLightFilters(ai_filter)
-        if lightfilters is None:
+        if not filters["disconnected"] and not filters["null"]:
+            logger.warning("No light filters found.")
             return None
 
-        # Sort lightfilters
-        #FLTR_WINDOW = JMUnusedLightFiltersUI(lightfilters)
-        #sorted_lightfilters = FLTR_WINDOW.filters_to_delete
-
         # Disconnect null filters from light
-        for lightfilter in lightfilters["null"]:
+        for lightfilter in filters["null"]:
             # Get connected lights
             lights = pm.connectionInfo("%s.message" % lightfilter, dfs=True)
             lights = [connection for connection in lights if "aiFilters" in connection]
@@ -1800,7 +1794,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                     i += 1
 
         # Delete unused and null filters
-        deleted_filters = lightfilters["disconnected"] + lightfilters["null"]
+        deleted_filters = filters["disconnected"] + filters["null"]
         for lightfilter in deleted_filters:
             if pm.objExists(lightfilter):
                 try:
@@ -1808,48 +1802,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 except AttributeError :
                     pm.delete(lightfilter)
 
-        logger.info("Safely deleted {0} : {1}".format(ai_filter, deleted_filters))
+        logger.info("Safely deleted {0} : {1}".format(filters["type"], deleted_filters))
         return deleted_filters
-
-    def __listUnusedLightFiltersUI(self, ai_filter):
-        """ List Unused light filters in UI.
-
-            Args:
-                ai_filter(str): filter that you want to delete. 'aiLightDecay' or 'aiLightBlocker'
-        """
-        # Get unused light filters
-        lightfilters = self.getUnusedLightFilters(ai_filter)
-        if lightfilters is None:
-            return None
-
-        # Delete UI
-        if pm.window("jmUnusedLightFilters", exists=True):
-            pm.deleteUI("jmUnusedLightFilters")
-
-        pm.window("jmUnusedLightFilters", t="Unused light filters", w=250, h=400, s=False)
-        pm.columnLayout(adj=True)
-        #list_view_disconnected = pm.textScrollList("scroll",
-        #    allowMultiSelection=True,
-        #    append=lightfilters["disconnected"],
-        #    height=300,
-        #    selectIndexedItem=True )
-        #    #selectCommand=connectSlider )
-
-        list_view_null = pm.textScrollList("scroll",
-            allowMultiSelection=True,
-            append=lightfilters["null"],
-            height=300,
-            selectIndexedItem=True )
-            #selectCommand=connectSlider )
-
-        popup = pm.popupMenu(parent=list_view, ctl=False, button=3)
-        #pm.menuItem(i="refresh.png", l='Reload list', c=reloadList)
-        #pm.menuItem("check", label="ignore safelocked node", checkBox=False, c=connectSlider )
-
-        pm.columnLayout(adj=True)
-
-        #connectSlider()
-        pm.showWindow()
 
     def selectNotIlluminatingLights(self):
         """ Select not Illuminating lights """
@@ -2278,7 +2232,7 @@ class JMLightOptimizerItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
 
 class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_unusedFiltersList):
     """ Unused light filters UI. """
-    def __init__(self, lightfilters, parent=None):
+    def __init__(self, filter_type, getFilters, deleteFilters, parent=None):
         """ Initialize JMUnusedLightFiltersUI """
         super(JMUnusedLightFiltersUI, self).__init__(parent=parent)
         self.setWindowFlags(QtCore.Qt.Tool)
@@ -2286,42 +2240,56 @@ class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_wid
         self.setWindowTitle(__name__ + "- Unused lights filters")
         self.setObjectName(__name__ + "LightFilters")
 
+        # Inheritance
+        self.filter_type = filter_type
+        self.getUnusedLightFilters = getFilters
+        self.deleteSafelyLightFilter = deleteFilters
+
         # Attributes
-        self.filter_type = lightfilters["type"]
-        self.disconnected_filters = lightfilters["disconnected"]
-        self.null_filters = lightfilters["null"]
         self.label_disconnectedFilters.setText("Disconnected %s :" % self.filter_type)
         self.label_nullFilters.setText("Null %s :" % self.filter_type)
-        self.filters_to_delete = { "disconnected" : [], "null" : [] }
 
         # Connect Methods to UI
-        self.pushButton_delete.clicked.connect(self.getFilterSelected)
+        self.pushButton_delete.clicked.connect(self.deleteSelectedFilters)
         self.pushButton_delete.clicked.connect(self.deleteLater)
         self.pushButton_cancel.clicked.connect(self.deleteLater)
 
         # Pre-build Methods
-        self.__populateList()
-        self.show()
+        if self.__populateList():
+            self.show()
 
-    def getFilterSelected(self):
+    def getSelectedFilters(self):
         """ Get lighfilters name from selected items. """
+        filters_to_delete = { "disconnected" : [], "null" : [] , "type" : self.filter_type}
         for item in self.listWidget_disconnectedFilters.selectedItems():
             filter_name = item.data(CUSTOM_IDX)
-            self.filters_to_delete["disconnected"].append(filter_name)
+            filters_to_delete["disconnected"].append(filter_name)
 
         for item in self.listWidget_nullFilters.selectedItems():
             filter_name = item.data(CUSTOM_IDX)
-            self.filters_to_delete["null"].append(filter_name)
+            filters_to_delete["null"].append(filter_name)
+
+        return filters_to_delete
+
+    def deleteSelectedFilters(self):
+        filters = self.getSelectedFilters()
+        self.deleteSafelyLightFilter(filters)
 
     def __populateList(self):
         """ Populate 'Disconnected' and 'Null' list widget. """
+        # Get filters
+        filters = self.getUnusedLightFilters(self.filter_type)
+
         # Check list
-        if not self.disconnected_filters and not self.null_filters:
+        if filters is None:
+            return None
+
+        elif not filters["disconnected"] and not filters["null"]:
             return None
 
         # Populate Disconnect filters
-        if self.disconnected_filters:
-            for filter in self.disconnected_filters:
+        if filters["disconnected"]:
+            for filter in filters["disconnected"]:
                 item_ui = JMUnusedLightFiltersItem(filter.name())
 
                 list_widget_item = QtWidgets.QListWidgetItem()
@@ -2331,8 +2299,8 @@ class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_wid
                 self.listWidget_disconnectedFilters.addItem(list_widget_item)
                 self.listWidget_disconnectedFilters.setItemWidget(list_widget_item, item_ui)
 
-        if self.null_filters:
-            for filter in self.null_filters:
+        if filters["null"]:
+            for filter in filters["null"]:
                 item_ui = JMUnusedLightFiltersItem(filter.name())
 
                 list_widget_item = QtWidgets.QListWidgetItem()
@@ -2342,7 +2310,7 @@ class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_wid
                 self.listWidget_nullFilters.addItem(list_widget_item)
                 self.listWidget_nullFilters.setItemWidget(list_widget_item, item_ui)
 
-        return self.disconnected_filters + self.null_filters
+        return True
 
 
 class JMUnusedLightFiltersItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
