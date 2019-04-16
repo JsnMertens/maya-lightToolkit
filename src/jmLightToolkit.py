@@ -21,7 +21,7 @@ import re
 __author__      = 'Jason Mertens'
 __copyright__   = 'Copyright (c) 2019 Jason Mertens'
 __license__     = 'MIT'
-__version__     = '1.0'
+__version__     = '2.0'
 __email__       = 'mertens.jas@gmail.com'
 
 MAIN_WINDOW = None
@@ -34,13 +34,11 @@ logger = logging.getLogger(__name__)
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
 
-import jmLightToolkitUI
-reload (jmLightToolkitUI)
-from jmLightToolkitUI import Ui_root
-from jmLightToolkitUI import Ui_Widget
+from jmLightToolkitUI import Ui_Widget_Root
+from jmLightToolkitUI import Ui_Widget_lightOptimizerItem
 
 
-class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
+class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_Widget_Root):
     """ Main Light Toolkit UI. """
     def __init__(self, parent=None):
         """ Initialize JMLightToolkit """
@@ -59,6 +57,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.color_picked = [1.0, 1.0, 1.0]  # Maya Color Picker
         self.css_btn_on = "QPushButton{color:rgb(250,220,120)}"
         self.css_btn_default = "QPushButton{color:rgb(255,255,255)}"
+        self.default_stylesheet = "QPushButton::checked{background-color:rgb(97,97,97); color:rgb(255,255,255); border:none}"
 
         self.lgt_types_default = [
             "pointLight",
@@ -126,7 +125,10 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
             "aiIndirect",
             "aiMaxBounces",
             "aiRadius",
-            "aiExposure" ]
+            "aiVolumeSamples",
+            "aiVolume",
+            "aiExposure",
+            "intensity" ]
 
         # Clear list and sort UI if MtoA is not loaded
         if not pm.pluginInfo("mtoa", q=True, loaded=True):
@@ -257,18 +259,23 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.pushButton_deleteUnusedBlocker.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightBlocker"))
         self.pushButton_deleteUnusedDecay.clicked.connect(partial(self.deleteSafelyLightFilter, "aiLightDecay"))
 
-        self.pushButton_setValue.clicked.connect(self.lightOptimizer__setMultiplesValues)
-        self.pushButton_selectLightsFromList.clicked.connect(self.lightOptimizer__selectLightsFromList)
-        self.comboBox_attributes.currentIndexChanged.connect(self.__lightOptimizer__populateGrid)
-        self.comboBox_attributes.currentIndexChanged.connect(self.__lightOptimizer__adaptSlider)
-        self.horizontalSlider_min.valueChanged.connect(self.__lightOptimizer__populateGrid)
-        self.horizontalSlider_max.valueChanged.connect(self.__lightOptimizer__populateGrid)
-        self.pushButton_setValue.clicked.connect(self.__lightOptimizer__populateGrid)
+        self.horizontalSlider_lightOptimizer_min.valueChanged[int].connect(self.spinBox_lightOptimizer_min.setValue)
+        self.spinBox_lightOptimizer_min.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_min.setValue)
+        self.spinBox_lightOptimizer_min.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_min.valueChanged)
+        self.horizontalSlider_lightOptimizer_max.valueChanged[int].connect(self.spinBox_lightOptimizer_max.setValue)
+        self.spinBox_lightOptimizer_max.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_max.setValue)
+        self.spinBox_lightOptimizer_max.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_max.valueChanged)
+        self.pushButton_lightOptimizer_sync.setStyleSheet(self.default_stylesheet)
+        self.pushButton_lightOptimizer_sync.setIcon(self.icon_sync_off)
+
+        self.pushButton_lightOptimizer_setValue.clicked.connect(self.lightOptimizer__setMultiplesValues)
+        self.pushButton_lightOptimizer_selectLights.clicked.connect(self.lightOptimizer__selectLightsFromList)
+        self.comboBox_lightOptimizer_attributes.currentIndexChanged.connect(self.__lightOptimizer__adaptSlider)
+        self.pushButton_lightOptimizer_sync.clicked.connect(self.__lightOptimizer__toggleSync)
 
         # Pre-build Methods
         self.__populateComboBoxAttributes()
         self.__lightOptimizer__populateComboBox()
-        self.__lightOptimizer__toggleSync()
         self.__soloMuteLightsCSS()
         self.__hierarchyCSS()
         self.__lookThroughCSS()
@@ -276,6 +283,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         self.__displayRadiusCSS()
         self.__displayBlockerCSS()
         self.__displayDecayCSS()
+
+        self.tab_optimize.hide()
+
+        for i in dir(self.tabWidget):
+            print i
 
     def keyPressEvent(self, event):
         """ Keyboard mapping. """
@@ -402,13 +414,12 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
     def __hierarchyCSS(self):
         """ Stylize hierarchy button """
-        default_stylesheet = "QPushButton::checked{background-color:rgb(97,97,97); color:rgb(255,255,255); border:none}"
         if self.pushButton_soloLights_hierarchy.isChecked():
-            self.pushButton_soloLights_hierarchy.setStyleSheet(default_stylesheet)
+            self.pushButton_soloLights_hierarchy.setStyleSheet(self.default_stylesheet)
             self.pushButton_soloLights_hierarchy.setIcon(self.icon_hierarchy_on)
 
         else:
-            self.pushButton_soloLights_hierarchy.setStyleSheet(default_stylesheet)
+            self.pushButton_soloLights_hierarchy.setStyleSheet(self.default_stylesheet)
             self.pushButton_soloLights_hierarchy.setIcon(self.icon_hierarchy_off)
 
     @_wrapperUndoChunck
@@ -474,13 +485,12 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
     def __lookThroughCSS(self):
         """ Stylize lookthrough button """
         # Window icon
-        default_stylesheet = "QPushButton::checked{background-color:rgb(97,97,97); color:rgb(255,255,255); border:none}"
         if self.pushButton_lookThroughWindow.isChecked():
-            self.pushButton_lookThroughWindow.setStyleSheet(default_stylesheet)
+            self.pushButton_lookThroughWindow.setStyleSheet(self.default_stylesheet)
             self.pushButton_lookThroughWindow.setIcon(self.icon_window_on)
 
         else:
-            self.pushButton_lookThroughWindow.setStyleSheet(default_stylesheet)
+            self.pushButton_lookThroughWindow.setStyleSheet(self.default_stylesheet)
             self.pushButton_lookThroughWindow.setIcon(self.icon_window_off)
 
         # Stylize button
@@ -1853,7 +1863,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
         """ Select lights from 'lightOptimizer' item selected. """
         # Get lightname from list
         lights = []
-        for item in self.listWidget.selectedItems():
+        for item in self.listWidget_lightOptimizer.selectedItems():
             datas = item.data(CUSTOM_IDX)
             lights.append(pm.PyNode(datas["lightname"]))
 
@@ -1866,10 +1876,10 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
     def lightOptimizer__setMultiplesValues(self):
         """ Set multiples values from 'lightOptimizer' item selected. """
-        value = self.doubleSpinBox_value.value()
+        value = self.doubleSpinBox_lightOptimizer_value.value()
         lights = []
 
-        for item in self.listWidget.selectedItems():
+        for item in self.listWidget_lightOptimizer.selectedItems():
             datas = item.data(CUSTOM_IDX)
             light_node = pm.PyNode("%s.%s" % (datas["lightname"], datas["attribute"]))
             lights.append(light_node)
@@ -1879,7 +1889,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
         logger.info("lights : %s, value : %s" % (lights, value))
 
-    def _lightOptimizer__sortLightAttributes(self, attr_):
+    def _lightOptimizer__sortingLights(self, attr_):
         """ Sort lights attributes values.
 
             Args:
@@ -1888,13 +1898,21 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
             Returns;
                 (list) : lights data.
         """
-        self.listWidget.clear()
-        min_value = self.spinBox_min.value()
-        max_value = self.spinBox_max.value()
+        # Get UI values
+        self.listWidget_lightOptimizer.clear()
+        min_value = self.spinBox_lightOptimizer_min.value()
+        max_value = self.spinBox_lightOptimizer_max.value()
+        attr_ = str(self.comboBox_lightOptimizer_attributes.currentText())
+
+        # Get all lights
+        all_lights = self._getAllLights(get_shapes=True)
+        if all_lights is None:
+            return None
 
         out = []
-        for light in self._getAllLights(get_shapes=True):
+        for light in all_lights:
             value = pm.getAttr("%s.%s" % (light, attr_))
+
             if (value >= min_value) and (value <= max_value):
                 light_data = {
                     "lightname" : light.name(),
@@ -1905,7 +1923,23 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
                 out.append(light_data)
 
-            elif (max_value == 11) and (value >= 10):
+            elif (max_value == 11) and (value >= 10) and (attr_ in ["aiSamples", "aiVolumeSamples"]):
+                light_data = {
+                    "lightname" : light.name(),
+                    "transform" : light.getParent().name(),
+                    "type" : pm.nodeType(light.name()),
+                    "attribute" : attr_,
+                    "value" : value }
+
+            elif (max_value == 101) and (value >= 100) and (attr_ == "aiRadius"):
+                light_data = {
+                    "lightname" : light.name(),
+                    "transform" : light.getParent().name(),
+                    "type" : pm.nodeType(light.name()),
+                    "attribute" : attr_,
+                    "value" : value }
+
+            elif (max_value == 21) and (value >= 20) and (attr_ in ["aiExposure", "intensity"]):
                 light_data = {
                     "lightname" : light.name(),
                     "transform" : light.getParent().name(),
@@ -1920,68 +1954,98 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_root):
 
     def __lightOptimizer__populateGrid(self):
         """ Populate 'lightOptimizer' grid from light attributes. """
-        attr_ = str(self.comboBox_attributes.currentText())
+        # Get UI values and sorted lights
+        attr_ = str(self.comboBox_lightOptimizer_attributes.currentText())
+        lights = self._lightOptimizer__sortingLights(attr_)
 
-        for item in self._lightOptimizer__sortLightAttributes(attr_):
+        # Return if no lights
+        if lights is None:
+            return None
+
+        for item in lights:
             item_ui = JMLightOptimizerItem(item, self.__lightOptimizer__populateGrid)
 
             list_widget_item = QtWidgets.QListWidgetItem()
             list_widget_item.setSizeHint(item_ui.sizeHint())
             list_widget_item.setData(CUSTOM_IDX, item)
 
-            self.listWidget.addItem(list_widget_item)
-            self.listWidget.setItemWidget(list_widget_item, item_ui)
+            self.listWidget_lightOptimizer.addItem(list_widget_item)
+            self.listWidget_lightOptimizer.setItemWidget(list_widget_item, item_ui)
+
+        return lights
 
     def __lightOptimizer__populateComboBox(self):
         """ Populate 'lightOptimizer' combo box attributes. """
         for attr in self.optimize_attrs:
-            self.comboBox_attributes.addItem(self.icon_blank, attr)
+            self.comboBox_lightOptimizer_attributes.addItem(self.icon_blank, attr)
 
     def __lightOptimizer__adaptSlider(self):
         """ Adapting slider value per attributes. """
-        current_text = self.comboBox_attributes.currentText()
-        if current_text == "aiIndirect":
-            self.horizontalSlider_max.setMaximum(1)
-            self.spinBox_max.setMaximum(1)
-            self.horizontalSlider_min.setMaximum(1)
-            self.spinBox_min.setMaximum(1)
-            self.horizontalSlider_min.setValue(0)
+        current_text = self.comboBox_lightOptimizer_attributes.currentText()
+        if current_text in ["aiSamples", "aiVolumeSamples"]:
+            self.horizontalSlider_lightOptimizer_min.setMaximum(11)
+            self.spinBox_lightOptimizer_min.setMaximum(11)
+            self.horizontalSlider_lightOptimizer_max.setMaximum(11)
+            self.spinBox_lightOptimizer_max.setMaximum(11)
+
+        elif current_text in ["aiIndirect", "aiVolume"]:
+            self.horizontalSlider_lightOptimizer_min.setMaximum(1)
+            self.spinBox_lightOptimizer_min.setMaximum(1)
+            self.horizontalSlider_lightOptimizer_max.setMaximum(1)
+            self.spinBox_lightOptimizer_max.setMaximum(1)
+
+        elif current_text == "aiMaxBounces":
+            self.horizontalSlider_lightOptimizer_min.setMaximum(999)
+            self.spinBox_lightOptimizer_min.setMaximum(999)
+            self.horizontalSlider_lightOptimizer_max.setMaximum(999)
+            self.spinBox_lightOptimizer_max.setMaximum(999)
 
         elif current_text == "aiRadius":
-            self.horizontalSlider_max.setMaximum(100)
-            self.spinBox_max.setMaximum(100)
-            self.horizontalSlider_min.setMaximum(100)
-            self.spinBox_min.setMaximum(100)
-            self.horizontalSlider_min.setValue(0)
+            self.horizontalSlider_lightOptimizer_min.setMaximum(101)
+            self.spinBox_lightOptimizer_min.setMaximum(101)
+            self.horizontalSlider_lightOptimizer_max.setMaximum(101)
+            self.spinBox_lightOptimizer_max.setMaximum(101)
+
+        elif current_text in ["aiExposure", "intensity"]:
+            self.horizontalSlider_lightOptimizer_min.setMaximum(21)
+            self.spinBox_lightOptimizer_min.setMaximum(21)
+            self.horizontalSlider_lightOptimizer_max.setMaximum(21)
+            self.spinBox_lightOptimizer_max.setMaximum(21)
 
         else:
-            self.horizontalSlider_max.setMaximum(11)
-            self.spinBox_max.setMaximum(11)
-            self.horizontalSlider_min.setMaximum(11)
-            self.spinBox_min.setMaximum(11)
-            self.horizontalSlider_min.setValue(1)
+            logger.error("Out Range.")
 
     def __lightOptimizer__toggleSync(self):
         """ Connect 'lightOptimizer' UI if button is checked. """
-        default_stylesheet = "QPushButton::checked{background-color:rgb(97,97,97); color:rgb(255,255,255); border:none}"
-        if self.pushButton_soloLights_hierarchy.isChecked():
-            self.pushButton_soloLights_hierarchy.setStyleSheet(default_stylesheet)
-            self.pushButton_soloLights_hierarchy.setIcon(self.icon_sync_on)
-            self.comboBox_attributes.currentIndexChanged.connect(self.__lightOptimizer__populateGrid)
-            self.comboBox_attributes.currentIndexChanged.connect(self.__lightOptimizer__adaptSlider)
-            self.horizontalSlider_min.valueChanged.connect(self.__lightOptimizer__populateGrid)
-            self.horizontalSlider_max.valueChanged.connect(self.__lightOptimizer__populateGrid)
-            self.pushButton_setValue.clicked.connect(self.__lightOptimizer__populateGrid)
-            self.__lightOptimizer__populateGrid()
+        if pm.pluginInfo("mtoa", q=True, loaded=True):
+            if self.pushButton_lightOptimizer_sync.isChecked():
+                self.pushButton_lightOptimizer_sync.setStyleSheet(self.default_stylesheet)
+                self.pushButton_lightOptimizer_sync.setIcon(self.icon_sync_on)
+
+                self.comboBox_lightOptimizer_attributes.currentIndexChanged.connect(self.__lightOptimizer__populateGrid)
+                self.comboBox_lightOptimizer_attributes.currentIndexChanged.connect(self.__lightOptimizer__adaptSlider)
+                self.horizontalSlider_lightOptimizer_min.valueChanged.connect(self.__lightOptimizer__populateGrid)
+                self.horizontalSlider_lightOptimizer_max.valueChanged.connect(self.__lightOptimizer__populateGrid)
+                self.pushButton_lightOptimizer_setValue.clicked.connect(self.__lightOptimizer__populateGrid)
+                self.__lightOptimizer__populateGrid()
+
+            else:
+                    self.pushButton_lightOptimizer_sync.setStyleSheet(self.default_stylesheet)
+                    self.pushButton_lightOptimizer_sync.setIcon(self.icon_sync_off)
+
+                    try:
+                        self.comboBox_lightOptimizer_attributes.currentIndexChanged.disconnect(self.__lightOptimizer__populateGrid)
+                        self.comboBox_lightOptimizer_attributes.currentIndexChanged.disconnect(self.__lightOptimizer__adaptSlider)
+                        self.horizontalSlider_lightOptimizer_min.valueChanged.disconnect(self.__lightOptimizer__populateGrid)
+                        self.horizontalSlider_lightOptimizer_max.valueChanged.disconnect(self.__lightOptimizer__populateGrid)
+                        self.pushButton_lightOptimizer_setValue.clicked.disconnect(self.__lightOptimizer__populateGrid)
+                    except RuntimeError:
+                        pass
+
+                    self.listWidget_lightOptimizer.clear()
 
         else:
-            self.pushButton_soloLights_hierarchy.setStyleSheet(default_stylesheet)
-            self.pushButton_soloLights_hierarchy.setIcon(self.icon_sync_off)
-            self.comboBox_attributes.currentIndexChanged.disconnect(self.__lightOptimizer__populateGrid)
-            self.comboBox_attributes.currentIndexChanged.disconnect(self.__lightOptimizer__adaptSlider)
-            self.horizontalSlider_min.valueChanged.disconnect(self.__lightOptimizer__populateGrid)
-            self.horizontalSlider_max.valueChanged.disconnect(self.__lightOptimizer__populateGrid)
-            self.pushButton_setValue.clicked.disconnect(self.__lightOptimizer__populateGrid)
+            pm.confirmDialog(title=__name__, icn="warning", message="'lightOptimizer' was designed for MtoA.", button=['OK'])
 
     def _getAllLights(self, get_shapes=False):
         """ Get all standard/Arnold lights from scene.
@@ -2161,7 +2225,7 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self.setWindowTitle("NO LIGHT")
 
 
-class JMLightOptimizerItem(QtWidgets.QWidget, Ui_Widget):
+class JMLightOptimizerItem(QtWidgets.QWidget, Ui_Widget_lightOptimizerItem):
     """ Custom 'LightOptimizer' widget appended to UI. """
     def __init__(self, datas, populateFunction):
         """ Initialize JMLightOptimizerItem. """

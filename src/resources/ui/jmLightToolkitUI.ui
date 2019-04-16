@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>root</class>
- <widget class="QWidget" name="root">
+ <class>Widget_Root</class>
+ <widget class="QWidget" name="Widget_Root">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -2684,6 +2684,28 @@
         <number>3</number>
        </property>
        <item>
+        <widget class="QPushButton" name="pushButton_lightOptimizer_sync">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QFrame" name="frame_5">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
@@ -2746,7 +2768,7 @@
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_3">
               <item>
-               <widget class="QComboBox" name="comboBox_attributes">
+               <widget class="QComboBox" name="comboBox_lightOptimizer_attributes">
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
@@ -2795,7 +2817,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSlider" name="horizontalSlider_min">
+                <widget class="QSlider" name="horizontalSlider_lightOptimizer_min">
                  <property name="maximum">
                   <number>11</number>
                  </property>
@@ -2808,7 +2830,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="spinBox_min">
+                <widget class="QSpinBox" name="spinBox_lightOptimizer_min">
                  <property name="buttonSymbols">
                   <enum>QAbstractSpinBox::NoButtons</enum>
                  </property>
@@ -2828,7 +2850,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSlider" name="horizontalSlider_max">
+                <widget class="QSlider" name="horizontalSlider_lightOptimizer_max">
                  <property name="maximum">
                   <number>11</number>
                  </property>
@@ -2841,7 +2863,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="spinBox_max">
+                <widget class="QSpinBox" name="spinBox_lightOptimizer_max">
                  <property name="buttonSymbols">
                   <enum>QAbstractSpinBox::NoButtons</enum>
                  </property>
@@ -2864,7 +2886,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_6">
          <item>
-          <widget class="QListWidget" name="listWidget">
+          <widget class="QListWidget" name="listWidget_lightOptimizer">
            <property name="verticalScrollBarPolicy">
             <enum>Qt::ScrollBarAlwaysOn</enum>
            </property>
@@ -2950,7 +2972,7 @@
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_6">
               <item>
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_value">
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_lightOptimizer_value">
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
@@ -2963,7 +2985,7 @@
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="pushButton_setValue">
+               <widget class="QPushButton" name="pushButton_lightOptimizer_setValue">
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
@@ -2980,7 +3002,7 @@
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_8">
               <item>
-               <widget class="QPushButton" name="pushButton_selectLightsFromList">
+               <widget class="QPushButton" name="pushButton_lightOptimizer_selectLights">
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
