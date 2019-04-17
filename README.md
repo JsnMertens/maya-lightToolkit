@@ -9,6 +9,7 @@ jmLightToolkit is a free toolkit in python I have written for managing lighting 
 2. Place this folder where you want on your computer or server but you need to specify to **MAYA_MODULE_PATH** environment variable where is located this folder to allow maya to find it.
 So for example you extract  under **c:\jmLightToolkit-master**.
 To get it recognize by maya you need to add the following line in the maya.env file : **MAYA_MODULE_PATH = C:\jmLightToolkit-master\src**  
+
 Note: **Maya.env** file is located to *(C:\Users\USERNAME\Documents\maya\20##\Maya.env):*
 
 ---
