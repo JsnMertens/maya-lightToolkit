@@ -8,6 +8,7 @@ Feel free to use it in your own projects or in production. (Optimized for MtoA)
 
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 from PySide2 import QtWidgets, QtGui, QtCore
+from PySide2.QtWidgets import QWidget
 from maya import OpenMayaUI as omui
 from shiboken2 import getCppPointer
 from functools import partial
@@ -24,13 +25,13 @@ __license__     = 'MIT'
 __version__     = '2.0'
 __email__       = 'mertens.jas@gmail.com'
 
-MAIN_WINDOW = None
-LOOK_WINDOW = None
-FLTR_WINDOW = None
-CUSTOM_IDX  = 32
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+_lightToolkitWindow = None
+_lookThroughWindow = None
+_lightFiltersWindow = None
+_logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
+CUSTOM_IDX = 32
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
@@ -41,7 +42,7 @@ from jmLightToolkitUI import Ui_widget_unusedFiltersList
 from jmLightToolkitUI import Ui_widget_unusedFiltersItem
 
 
-class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root):
+class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
     """ Main Light Toolkit UI. """
     def __init__(self, parent=None):
         """ Initialize JMLightToolkit """
@@ -348,7 +349,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         displayed_layer.color.set(22)
 
         self.__soloMuteLightsCSS()
-        logger.info("Lights displayed : %s" % [lgt.name() for lgt in lights["displayed"]])
+        _logger.info("Lights displayed : %s" % [lgt.name() for lgt in lights["displayed"]])
         return lights["displayed"]
 
     @_wrapperUndoChunck
@@ -377,7 +378,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             muted_layer.visibility.set(0)
 
         self.__soloMuteLightsCSS()
-        logger.info("Lights muted : %s" % [lgt.name() for lgt in lights])
+        _logger.info("Lights muted : %s" % [lgt.name() for lgt in lights])
         return lights
 
     @_wrapperUndoChunck
@@ -394,7 +395,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         if something_deleted:
             self.__soloMuteLightsCSS()
-            logger.info("Lights visibilities restored.")
+            _logger.info("Lights visibilities restored.")
             return True
         else:
             return False
@@ -459,7 +460,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             light =  lights[0].name()
             cmd = "lookThroughModelPanelClipped(\"" + light + "\", \"" + current_panel + "\", 0.001, 10000)"
             pm.mel.eval(cmd)
-            logger.info("Look through : %s" % light)
+            _logger.info("Look through : %s" % light)
 
         self.__lookThroughCSS()
 
@@ -508,17 +509,17 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if no one checkbox checked
         if not t_ and not r_ and not s_:
-            logger.warning("Nothing checked in UI")
+            _logger.warning("Nothing checked in UI")
             return None
 
         # Get selection then check it
         selected = pm.selected()
         if not selected:
-            logger.warning("Nothing selected")
+            _logger.warning("Nothing selected")
             return None
 
         elif len(selected) < 2:
-            logger.warning("Only one object selected")
+            _logger.warning("Only one object selected")
             return None
 
         master = selected[-1]
@@ -536,7 +537,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 pm.matchTransform(slave, master, scale=True)
 
         pm.select(slaves)
-        logger.info("%s aligned to %s" % (slaves, master))
+        _logger.info("%s aligned to %s" % (slaves, master))
         return True
 
     def __quickAlignCSS(self):
@@ -600,7 +601,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         for attr_ in self.transform_attrs:
             self.comboBox_multiAttr.addItem(self.icon_blank, attr_)
 
-        logger.info("Attributes filtered")
+        _logger.info("Attributes filtered")
         return attributes_kept
 
     @_wrapperUndoChunck
@@ -611,7 +612,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 mode(str): Choose either 'absolute' for new value or 'relative' for increment value.
         """
         if mode not in ["absolute", "relative"]:
-            logger.error("Choose either 'absolute' for new value or 'relative' for increment value.")
+            _logger.error("Choose either 'absolute' for new value or 'relative' for increment value.")
             return None
 
         lights = self._onlyLightsFromSelection(get_shapes=True)
@@ -631,7 +632,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                         current_value = pm.getAttr("%s.%s" % (light, attr_))
                         pm.setAttr("%s.%s" % (light, attr_), value + current_value)
                 else:
-                    logger.warning("%s.%s doesn't exist" % (light, attr_))
+                    _logger.warning("%s.%s doesn't exist" % (light, attr_))
 
         # Transform Attributes
         else:  # attr_ in self.transform_data
@@ -646,9 +647,9 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                         current_value = pm.getAttr("%s.%s" % (selected, attr_))
                         pm.setAttr("%s.%s" % (selected, attr_), value + current_value)
                 else:
-                    logger.warning("%s.%s doesn't exist" % (selected, attr_))
+                    _logger.warning("%s.%s doesn't exist" % (selected, attr_))
 
-        logger.info("'Multi set attributes' success")
+        _logger.info("'Multi set attributes' success")
         return {"lights" : lights, "attribute" : attr_, "value" : value}
 
     def __populateComboBoxAttributes(self):
@@ -699,7 +700,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         color = "{0}, {1}, {2}".format(color_R, color_G, color_B)
 
         self.pushButton_colorPicker.setStyleSheet("QPushButton{background-color:rgb(%s);}" % color)
-        logger.info("R=%s G=%s B=%s" % (self.color_picked[0], self.color_picked[1], self.color_picked[2]))
+        _logger.info("R=%s G=%s B=%s" % (self.color_picked[0], self.color_picked[1], self.color_picked[2]))
         return self.color_picked
 
     @_wrapperUndoChunck
@@ -707,7 +708,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         """ Set lights color. """
         for light in self._onlyLightsFromSelection():
             pm.setAttr("%s.color" % light, self.color_picked)
-            logger.info("Color : %s" % self.color_picked)
+            _logger.info("Color : %s" % self.color_picked)
 
     @_wrapperUndoChunck
     def transfertLightAttrs(self):
@@ -734,7 +735,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                     pm.setAttr("%s.%s" % (slave, attr_), copy_attr)
 
         pm.select(slaves)
-        logger.info("%s attributes transfered to %s" % (driver.name(), [node.name() for node in slaves]))
+        _logger.info("%s attributes transfered to %s" % (driver.name(), [node.name() for node in slaves]))
         return True
 
     @_wrapperUndoChunck
@@ -752,7 +753,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         transforms = [shape.getParent() for shape in shapes]
 
         if not transforms:
-            logger.warning("Invalid selection")
+            _logger.warning("Invalid selection")
             return None
 
         # Prompt Dialog
@@ -769,7 +770,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         if result == 'OK':
             input_ = pm.promptDialog(query=True, text=True)
         else:
-            logger.warning("Set need a name")
+            _logger.warning("Set need a name")
             return None
 
         # ROOT SET
@@ -789,7 +790,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         pm.sets(root_set, fe=set_)
 
         pm.select(selected)
-        logger.info("%s" % set_)
+        _logger.info("%s" % set_)
         return set_
 
     @_wrapperSelected
@@ -805,7 +806,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         pm.select(selected)
         pm.select(set_children, add=True)
         pm.cmds.MakeLightLinks()
-        logger.info("lights linked")
+        _logger.info("lights linked")
 
     @_wrapperSelected
     def breakLightLinks(self):
@@ -820,7 +821,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         pm.select(selected)
         pm.select(set_children, add=True)
         pm.cmds.BreakLightLinks()
-        logger.info("lights breaked")
+        _logger.info("lights breaked")
 
     def selectLinked(self):
         """ Toggle function between:
@@ -829,23 +830,23 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         """
         selected = pm.selected()
         if not selected:
-            logger.warning("Nothing selected")
+            _logger.warning("Nothing selected")
             return None
 
         if pm.nodeType(pm.selected()[0].getShape().name()) in self.lgt_types:
             pm.cmds.SelectObjectsIlluminatedByLight()
             if not pm.selected():
-                logger.warning("%s illuminate nothing" % [node.name() for node in selected])
+                _logger.warning("%s illuminate nothing" % [node.name() for node in selected])
                 pm.select(selected)
                 return None
         else:
             pm.cmds.SelectLightsIlluminatingObject()
             if not pm.selected():
-                logger.warning("%s is not illuminated" % [node.name() for node in selected])
+                _logger.warning("%s is not illuminated" % [node.name() for node in selected])
                 pm.select(selected)
                 return None
 
-        logger.info("link : %s " % [node.name() for node in pm.selected()])
+        _logger.info("link : %s " % [node.name() for node in pm.selected()])
         return selected
 
     def breakAllLinks(self):
@@ -855,7 +856,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             object_linked = pm.lightlink(q=True, light=light)
             pm.lightlink(light=light, object=object_linked, b=True)
 
-        logger.info("%s breaked from all" % [node.name() for node in lights])
+        _logger.info("%s breaked from all" % [node.name() for node in lights])
         return light
 
     @_wrapperUndoChunck
@@ -866,11 +867,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Check light selection
         if not lights:
-            logger.warning("Nothing selected")
+            _logger.warning("Nothing selected")
             return None
 
         elif len(lights) < 2:
-            logger.warning("Only one light selected")
+            _logger.warning("Only one light selected")
             return None
 
         driver = lights[0]
@@ -886,7 +887,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             pm.lightlink(light=slave, object=sorted_link, m=True)
 
         pm.select(slaves)
-        logger.info("Link from %s copyied to %s" % (driver.name(), [slave.name() for slave in slaves]))
+        _logger.info("Link from %s copyied to %s" % (driver.name(), [slave.name() for slave in slaves]))
         return True
 
     def openArnoldRenderView(self):
@@ -915,7 +916,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             is_connected = pm.connectionInfo("%s.aiFilters[%s]" % (driver, i), id=True)
 
         if not driver_connection:
-            logger.warning("%s don't have any light filters")
+            _logger.warning("%s don't have any light filters")
             return None
 
         # Disconnect all light filters from the others lights
@@ -934,7 +935,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 pm.PyNode("%s.message" % value) >> pm.PyNode("%s.%s" % (slave.name(), key))
 
         pm.select(slaves)
-        logger.info("%s light filters transfered to %s" % (driver.name(), [node.name() for node in slaves]))
+        _logger.info("%s light filters transfered to %s" % (driver.name(), [node.name() for node in slaves]))
         return driver_connection
 
     @_wrapperUndoChunck
@@ -946,7 +947,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         """
         # Check
         if filter_ not in ["aiLightDecay", "aiLightBlocker", "aiGobo"]:
-            logger.error("'aiLightBlocker', 'aiLightDecay', 'aiGobo'")
+            _logger.error("'aiLightBlocker', 'aiLightDecay', 'aiGobo'")
             return None
 
         # Sort lights and filters
@@ -969,7 +970,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if no lights selected
         if not lights_selected:
-            logger.warning("No lights found.")
+            _logger.warning("No lights found.")
             return None
 
         # If filter is empty, create one
@@ -997,7 +998,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                     node_filter >> node_lgt
 
         filter_name = [node.name() for node in filter_selected]
-        logger.info("filter : %s " % filter_name)
+        _logger.info("filter : %s " % filter_name)
         return filter_selected
 
     @_wrapperUndoChunck
@@ -1127,9 +1128,9 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             out.append(light)
 
         if out:
-            logger.info("Display Radius success" % ([lgt.name() for lgt in out]))
+            _logger.info("Display Radius success" % ([lgt.name() for lgt in out]))
         else:
-            logger.info("No 'aiRadius' display created")
+            _logger.info("No 'aiRadius' display created")
 
         pm.select(save_selected)
         self.__displayRadiusCSS()
@@ -1158,7 +1159,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             pm.delete("displayRadius_SDEG")
 
         self.__displayRadiusCSS()
-        logger.info("'aiRadius' display successfully deleted.")
+        _logger.info("'aiRadius' display successfully deleted.")
         return True
 
     def __displayRadiusCSS(self):
@@ -1186,7 +1187,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Abort if not blockers selected
         if not blockers:
-            logger.warning("No Blockers found")
+            _logger.warning("No Blockers found")
             return None
 
         # Rename all blockers
@@ -1275,9 +1276,9 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             out.append(display_mesh)
 
         if out:
-            logger.info("Display Light Blocker success" % ([lgt.name() for lgt in out]))
+            _logger.info("Display Light Blocker success" % ([lgt.name() for lgt in out]))
         else:
-            logger.info("No 'aiLightBlocker' display created")
+            _logger.info("No 'aiLightBlocker' display created")
 
         self.__displayBlockerCSS()
         return out
@@ -1304,7 +1305,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             pm.delete("displayBlocker_SDEG")
 
         self.__displayBlockerCSS()
-        logger.info("'aiLightBlocker' display successfully deleted.")
+        _logger.info("'aiLightBlocker' display successfully deleted.")
         return True
 
     def __displayBlockerCSS(self):
@@ -1512,9 +1513,9 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             out.append(light)
 
         if out:
-            logger.info("Display Decay success" % ([lgt.name() for lgt in out]))
+            _logger.info("Display Decay success" % ([lgt.name() for lgt in out]))
         else:
-            logger.info("No 'aiDecay' display created")
+            _logger.info("No 'aiDecay' display created")
 
         self.__displayDecayCSS()
         return out
@@ -1551,7 +1552,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             pm.delete("endDisplayDecay_SDEG")
 
         self.__displayDecayCSS()
-        logger.info("'aiDecay' display successfully deleted.")
+        _logger.info("'aiDecay' display successfully deleted.")
         return
 
     def __displayDecayCSS(self):
@@ -1577,11 +1578,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         types_ = [n for n in re.split(r",([ ]?)+", type_) if n]
 
         if not names_ and not types_:
-            logger.warning("No 'name' and 'type' found.")
+            _logger.warning("No 'name' and 'type' found.")
             return None
 
         if self.radioButton_advancedSelection_root.isChecked() and self.radioButton_advancedSelection_exclude.isChecked():
-            logger.warning("'Exclude mode' is disabled with 'root mode'")
+            _logger.warning("'Exclude mode' is disabled with 'root mode'")
             return None
 
         # Make list
@@ -1600,7 +1601,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         if self.radioButton_advancedSelection_selected.isChecked():
             selected = pm.selected()
             if not selected:
-                logger.warning("Nothing selected in scene")
+                _logger.warning("Nothing selected in scene")
                 return None
 
             # Populate list
@@ -1618,11 +1619,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if list is empty
         if not out_transforms:
-            logger.warning("Something is wrong, Nothing to selected")
+            _logger.warning("Something is wrong, Nothing to selected")
             return None
 
         return_name = [node.name() for node in out_transforms]
-        logger.info("adavanced selection : %s" % return_name)
+        _logger.info("adavanced selection : %s" % return_name)
         pm.select(out_transforms)
 
     def colorOutlinerSelected(self, color_, enable=True):
@@ -1662,14 +1663,14 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if selection is empty
         if not selected:
-            logger.warning("Nothing selected")
+            _logger.warning("Nothing selected")
             return
 
         # Remove Color outliner
         if not enable:
             for node in selected:
                 node.useOutlinerColor.set(False)
-            logger.info("Color Outliner disabled")
+            _logger.info("Color Outliner disabled")
             pm.mel.eval("AEdagNodeCommonRefreshOutliners()")
             return
 
@@ -1679,7 +1680,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             node.outlinerColor.set(set_color)
 
         pm.mel.eval("AEdagNodeCommonRefreshOutliners()")
-        logger.info("Color Outliner success")
+        _logger.info("Color Outliner success")
 
     def selectChildren(self):
         """ Select All tranforms children from selection """
@@ -1688,7 +1689,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if selection is empty
         if not selected:
-            logger.warning("Nothing selected")
+            _logger.warning("Nothing selected")
             return None
 
         # Get shapes
@@ -1702,7 +1703,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         out_transforms = [shape.getParent() for shape in out_shapes]
 
         pm.select(out_transforms)
-        logger.info("%s selected" % [node.name() for node in out_transforms])
+        _logger.info("%s selected" % [node.name() for node in out_transforms])
         return out_transforms
 
     def getUnusedLightFilters(self, filter_name):
@@ -1716,13 +1717,13 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         """
         # Check input attributes
         if filter_name not in ["aiLightDecay", "aiLightBlocker"]:
-            logger.error("'aiLightDecay' or 'aiLightBlocker'")
+            _logger.error("'aiLightDecay' or 'aiLightBlocker'")
             return None
 
         # Get filters
         all_lightfilters = pm.ls(type=filter_name)
         if not all_lightfilters:
-            logger.warning("No %s found" % filter_name)
+            _logger.warning("No %s found" % filter_name)
             return None
 
         # Get disconnected filters
@@ -1748,7 +1749,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
 
         if not disconnected_filters and not null_filters:
-            logger.info("All filters is used.")
+            _logger.info("All filters is used.")
             return None
 
         else:
@@ -1762,11 +1763,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         """
         # Check input attributes
         if filters["type"] not in ["aiLightDecay", "aiLightBlocker"]:
-            logger.error("'aiLightDecay' or 'aiLightBlocker'")
+            _logger.error("'aiLightDecay' or 'aiLightBlocker'")
             return None
 
         if not filters["disconnected"] and not filters["null"]:
-            logger.warning("No light filters found.")
+            _logger.warning("No light filters found.")
             return None
 
         # Disconnect null filters from light
@@ -1802,7 +1803,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 except AttributeError :
                     pm.delete(lightfilter)
 
-        logger.info("Safely deleted {0} : {1}".format(filters["type"], deleted_filters))
+        _logger.info("Safely deleted {0} : {1}".format(filters["type"], deleted_filters))
         return deleted_filters
 
     def selectNotIlluminatingLights(self):
@@ -1813,11 +1814,11 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
                 not_illuminating.append(light)
 
         if not not_illuminating:
-            logger.info("all Lights is linked")
+            _logger.info("all Lights is linked")
             return
 
         pm.select(not_illuminating)
-        logger.info("%s illuminate nothing" % [lgt.name() for lgt in not_illuminating])
+        _logger.info("%s illuminate nothing" % [lgt.name() for lgt in not_illuminating])
 
     def lightOptimizer__selectLightsFromList(self):
         """ Select lights from 'lightOptimizer' item selected. """
@@ -1832,7 +1833,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         pm.select(lights_transform)
 
         return_lgts_name = [lgts.name() for lgts in lights_transform]
-        logger.info("Select : %s" % return_lgts_name)
+        _logger.info("Select : %s" % return_lgts_name)
 
     def lightOptimizer__setMultiplesValues(self):
         """ Set multiples values from 'lightOptimizer' item selected. """
@@ -1847,7 +1848,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         for light in lights:
             light.set(value)
 
-        logger.info("lights : %s, value : %s" % (lights, value))
+        _logger.info("lights : %s, value : %s" % (lights, value))
 
     def _lightOptimizer__sortingLights(self, attr_):
         """ Sort lights attributes values.
@@ -1973,7 +1974,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
             self.spinBox_lightOptimizer_max.setMaximum(21)
 
         else:
-            logger.error("Out Range.")
+            _logger.error("Out Range.")
 
     def __lightOptimizer__toggleSync(self):
         """ Connect 'lightOptimizer' UI if button is checked. """
@@ -2022,14 +2023,14 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if list is empty
         if not lights:
-            logger.warning("No lights in scene")
+            _logger.warning("No lights in scene")
             return None
 
         # Get Transform if not 'get_shapes'
         if not get_shapes:
             lights = [shape.getParent() for shape in lights]
 
-        logger.debug("_getAllLights : %s" % lights)
+        _logger.debug("_getAllLights : %s" % lights)
         return lights
 
     def _onlyLightsFromSelection(self, get_shapes=False, all_hierachy=False):
@@ -2065,14 +2066,14 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
 
         # Return if list is empty
         if not lights:
-            logger.warning("No lights selected")
+            _logger.warning("No lights selected")
             return None
 
         # Get Transform if not 'get_shapes'
         if not get_shapes:
             lights = [shape.getParent() for shape in lights]
 
-        logger.debug("_onlyLightsFromSelection : %s" % lights)
+        _logger.debug("_onlyLightsFromSelection : %s" % lights)
         return lights
 
     def _eitherCreateGetNode(self, node_type, node_name):
@@ -2097,7 +2098,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_root
         return node
 
 
-class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
     """ Create Look through window. """
     def __init__(self):
         """ Initialize JMLookThroughWindow. """
@@ -2151,13 +2152,13 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         pm.cmds.setParent(old_parent)
 
     def dockCloseEventTriggered(self):
-        global LOOK_WINDOW
-        LOOK_WINDOW = None
+        global _lookThroughWindow
+        _lookThroughWindow = None
         self.deleteLookedThroughCam()
 
     def deleteLookedThroughCam(self):
         """ Delete Camera created by looktrough """
-        looked_through = MAIN_WINDOW._isLookThrough()
+        looked_through = _lightToolkitWindow._isLookThrough()
         if looked_through is not None:
             pm.delete(looked_through)
 
@@ -2167,7 +2168,7 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
     def lookThroughLightSelected(self):
         self.lightname = None
-        selected = MAIN_WINDOW._onlyLightsFromSelection()
+        selected = _lightToolkitWindow._onlyLightsFromSelection()
         if selected:
             self.lightname = selected[-1].name()
 
@@ -2175,7 +2176,7 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self.setWindowTitle(self.lightname)
             cmd = "lookThroughModelPanelClipped(\"" + self.lightname + "\", \"" + self.panel + "\", 0.001, 1000)"
             pm.mel.eval(cmd)
-            logger.info("Look through : %s" % self.lightname)
+            _logger.info("Look through : %s" % self.lightname)
 
             if pm.objExists("cameraShape1"):
                 pm.setAttr("cameraShape1.farClipPlane", 1000000)
@@ -2185,7 +2186,7 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
             self.setWindowTitle("NO LIGHT")
 
 
-class JMLightOptimizerItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
+class JMLightOptimizerItem(QWidget, Ui_widget_unusedFiltersItem):
     """ Custom 'LightOptimizer' widget appended to UI. """
     def __init__(self, datas, populateFunction):
         """ Initialize JMLightOptimizerItem. """
@@ -2219,7 +2220,7 @@ class JMLightOptimizerItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
     def selectLight(self):
         """ Select light. """
         pm.select(self.transform_node)
-        logger.info("select : %s" % self.transform_node)
+        _logger.info("select : %s" % self.transform_node)
 
     def setValue(self):
         """ Set new value attribute. """
@@ -2227,10 +2228,10 @@ class JMLightOptimizerItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
         pm.setAttr("%s.%s" % (self.lightname, self.attribute), value)
 
         self.populate_parent()
-        logger.info("value : {0}, attribute : {1}, light : {2}".format(value, self.attribute, self.lightname))
+        _logger.info("value : {0}, attribute : {1}, light : {2}".format(value, self.attribute, self.lightname))
 
 
-class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_widget_unusedFiltersList):
+class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QWidget, Ui_widget_unusedFiltersList):
     """ Unused light filters UI. """
     def __init__(self, filter_type, getFilters, deleteFilters, parent=None):
         """ Initialize JMUnusedLightFiltersUI """
@@ -2313,7 +2314,7 @@ class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QtWidgets.QWidget, Ui_wid
         return True
 
 
-class JMUnusedLightFiltersItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
+class JMUnusedLightFiltersItem(QWidget, Ui_widget_unusedFiltersItem):
     """ List disconnected and null light filters in list. """
     def __init__(self, filter_name):
         """ Initialize JMUnusedLightFiltersItem. """
@@ -2329,7 +2330,7 @@ class JMUnusedLightFiltersItem(QtWidgets.QWidget, Ui_widget_unusedFiltersItem):
     def selectFilter(self):
         """ Select light filter from item. """
         pm.select(self.filter_name )
-        logger.info("select : %s" % self.filter_name )
+        _logger.info("select : %s" % self.filter_name )
 
 
 def promptDialogMtoA():
@@ -2343,82 +2344,82 @@ def promptDialogMtoA():
             try:
                 pm.loadPlugin("mtoa")
             except RuntimeError,e:
-                logger.warning(e)
+                _logger.warning(e)
 
 def _lookThroughWindowClosed():
     """ Close Callback lookthrough UI. """
-    global LOOK_WINDOW
-    if LOOK_WINDOW:
-        LOOK_WINDOW.deleteLookedThroughCam()
-        LOOK_WINDOW = None
+    global _lookThroughWindow
+    if _lookThroughWindow:
+        _lookThroughWindow.deleteLookedThroughCam()
+        _lookThroughWindow = None
 
 def createLookThroughWindow(restore=False):
     """ Run LookThrough UI. """
-    global LOOK_WINDOW
+    global _lookThroughWindow
 
-    if MAIN_WINDOW is None:
+    if _lightToolkitWindow is None:
         return
 
-    if not MAIN_WINDOW._onlyLightsFromSelection():
+    if not _lightToolkitWindow._onlyLightsFromSelection():
         return
 
     control = "JMLookThroughWindow" + "WorkspaceControl"
-    if pm.workspaceControl(control, q=True, exists=True) and LOOK_WINDOW is None:
+    if pm.workspaceControl(control, q=True, exists=True) and _lookThroughWindow is None:
         pm.workspaceControl(control, e=True, close=True)
         pm.deleteUI(control)
 
     if restore:
         restored_control = omui.MQtUtil.getCurrentParent()
 
-    if LOOK_WINDOW is None:
-        LOOK_WINDOW = JMLookThroughWindow()
+    if _lookThroughWindow is None:
+        _lookThroughWindow = JMLookThroughWindow()
 
     if restore:
-        mixinPtr = omui.MQtUtil.findControl(LOOK_WINDOW.objectName())
+        mixinPtr = omui.MQtUtil.findControl(_lookThroughWindow.objectName())
         omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(restored_control))
     else:
-        required_control = MAIN_WINDOW.objectName() + 'WorkspaceControl'
-        LOOK_WINDOW.show(dockable=True, controls=required_control,
+        required_control = _lightToolkitWindow.objectName() + 'WorkspaceControl'
+        _lookThroughWindow.show(dockable=True, controls=required_control,
             uiScript='import jmLightToolkit\njmLightToolkit.createLookThroughWindow(restore=True)',
             closeCallback='import jmLightToolkit\njmLightToolkit._lookThroughWindowClosed()')
 
-    LOOK_WINDOW.lookThroughLightSelected()
-    return LOOK_WINDOW
+    _lookThroughWindow.lookThroughLightSelected()
+    return _lookThroughWindow
 
 def mainWindowClosed():
     """ Close Callback JMLightToolkit UI. """
-    global MAIN_WINDOW
-    global LOOK_WINDOW
-    global FLTR_WINDOW
-    if MAIN_WINDOW:
-        MAIN_WINDOW = None
-        LOOK_WINDOW = None
-        FLTR_WINDOW = None
+    global _lightToolkitWindow
+    global _lookThroughWindow
+    global _lightFiltersWindow
+    if _lightToolkitWindow:
+        _lightToolkitWindow = None
+        _lookThroughWindow = None
+        _lightFiltersWindow = None
 
 def main(restore=False):
     """ Run JMLightToolkit UI. """
     promptDialogMtoA()
-    global MAIN_WINDOW
+    global _lightToolkitWindow
 
     if not restore:
         control = __name__ + "WorkspaceControl"
-        if pm.workspaceControl(control, q=True, exists=True) and MAIN_WINDOW is None:
+        if pm.workspaceControl(control, q=True, exists=True) and _lightToolkitWindow is None:
             pm.workspaceControl(control, e=True, close=True)
             pm.deleteUI(control)
 
     if restore:
         restored_control = omui.MQtUtil.getCurrentParent()
 
-    if MAIN_WINDOW is None:
-        MAIN_WINDOW = JMLightToolkit()
+    if _lightToolkitWindow is None:
+        _lightToolkitWindow = JMLightToolkit()
 
     if restore:
-        mixinPtr = omui.MQtUtil.findControl(MAIN_WINDOW.objectName())
+        mixinPtr = omui.MQtUtil.findControl(_lightToolkitWindow.objectName())
         omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(restored_control))
 
     else:
-        MAIN_WINDOW.show(dockable=True, minWidth=300, width=400, widthSizingProperty='minimum',
+        _lightToolkitWindow.show(dockable=True, minWidth=300, width=400, widthSizingProperty='minimum',
             uiScript='import jmLightToolkit\njmLightToolkit.main(restore=True)',
             closeCallback='import jmLightToolkit\njmLightToolkit.mainWindowClosed()' )
 
-    return MAIN_WINDOW
+    return _lightToolkitWindow
