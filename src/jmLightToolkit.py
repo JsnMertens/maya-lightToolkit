@@ -32,7 +32,7 @@ _logger = logging.getLogger(__name__)
 
 CUSTOM_INDEX = 32
 TOOLKIT_NAME = "jmLightToolkit"
-FILTERS_NAME = "jmUnusedFilters"
+FILTERS_NAME = "jmUnusedLightFilters"
 THROUGH_NAME = "jmLookThroughWindow"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -434,10 +434,13 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
             self.__lookThroughCSS()
             return
 
+        # Return is no light found in selection
+        if not self._onlyLightsFromSelection():
+            return None
+
         # Look Through Window
         if self.pushButton_lookThroughWindow.isChecked():
             createLookThroughWindow()
-            self.__lookThroughCSS()
             return
 
         # Get Panel, if persp found, throught this cam
@@ -485,7 +488,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
         return looked_through
 
     def __lookThroughCSS(self):
-        """ Stylize lookthrough button """
+        """ Stylize lookthrough button. """
         # Window icon
         if self.pushButton_lookThroughWindow.isChecked():
             self.pushButton_lookThroughWindow.setStyleSheet(self.default_stylesheet)
@@ -1390,13 +1393,10 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
                     light.name())
 
                 if pm.nodeType(light.getShape().name()) == "spotLight":
-                    display_mesh = pm.polyCylinder(sa=32, sc=0, height=0.01, n=display_mesh_name)[0]
+                    display_mesh = pm.polyCylinder(sa=32, sc=0, height=0.01, radius=5, n=display_mesh_name)[0]
 
                 elif pm.nodeType(light.getShape().name()) == "pointLight":
                     display_mesh = pm.polySphere(n=display_mesh_name, subdivisionsAxis=36, subdivisionsHeight=36)[0]
-
-                else:
-                    display_mesh = pm.polyCube(n=display_mesh_name, height=0.01, width=2, depth=2)[0]
 
                 # Assign Shader
                 pm.select (display_mesh)
@@ -1732,7 +1732,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
         disconnected_filters = []
         connected_filters = []
         for lightfilter in all_lightfilters:
-            if not lightfilter.outputs():
+            outputs = [output for output in lightfilter.outputs() if "defaultRenderUtilityList" not in output.name()]
+            if not outputs:
                 disconnected_filters.append(lightfilter)
             else:
                 connected_filters.append(lightfilter)
@@ -2155,18 +2156,19 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
         pm.cmds.setParent(old_parent)
 
     def dockCloseEventTriggered(self):
+        """ Close event. """
         global _lookThroughWindow
         _lookThroughWindow = None
         self.deleteThroughCam()
 
     def deleteThroughCam(self):
-        """ Delete Camera created by looktrough """
+        """ Delete Camera created by looktrough. """
         looked_through = _lightToolkitWindow._isLookThrough()
         if looked_through is not None:
             pm.delete(looked_through)
 
     def selectLight(self):
-        """ Select light from look through window """
+        """ Select light from look through window. """
         pm.select(self.lightname)
 
     def lookThroughSelectedLight(self):
@@ -2204,17 +2206,28 @@ class JMUnusedLightFiltersWindow(MayaQWidgetDockableMixin, QWidget, Ui_widget_un
         self.disconnected_filters = filters["disconnected"]
         self.deleteSafelyLightFilter = deleteFiltersFunc
 
-        # Attributes
-        self.label_disconnectedFilters.setText("Disconnected %s :" % self.filter_type)
-        self.label_nullFilters.setText("Null %s :" % self.filter_type)
+        # Stylize
+        self.label_disconnectedFilters.setText(("Disconnected %s :" % self.filter_type).upper())
+        self.label_nullFilters.setText(("Null %s :" % self.filter_type).upper())
+        self.label_disconnectedFilters.setStyleSheet("QLabel{background:rgb(20,230,150); color:rgb(255,255,255)}")
+        self.label_nullFilters.setStyleSheet("QLabel{background:rgb(20,200,180); color:rgb(255,255,255)}")
 
         # Connect Methods to UI
         self.pushButton_delete.clicked.connect(self.deleteSelectedFilters)
-        self.pushButton_delete.clicked.connect(self.deleteLater)
-        self.pushButton_cancel.clicked.connect(self.deleteLater)
+        self.pushButton_delete.clicked.connect(self.close)
+        self.pushButton_cancel.clicked.connect(self.close)
 
         # Pre-build Methods
         self.__populateList()
+
+    def dockCloseEventTriggered(self):
+        """ Close event. """
+        control = FILTERS_NAME + "WorkspaceControl"
+        if pm.workspaceControl(control, q=True, exists=True) and _lightFiltersWindow is None:
+            pm.workspaceControl(control, e=True, close=True)
+            pm.deleteUI(control)
+
+        unusedFiltersWindowClosed()
 
     def getSelectedFilters(self):
         """ Get lighfilters name from selected items. """
@@ -2257,10 +2270,10 @@ class JMUnusedLightFiltersWindow(MayaQWidgetDockableMixin, QWidget, Ui_widget_un
                 self.listWidget_nullFilters.addItem(list_widget_item)
                 self.listWidget_nullFilters.setItemWidget(list_widget_item, item_ui)
 
-        return True
+        return self.disconnected_filters + self.null_filters
 
 
-class JMLightOptimizerItem(QWidget, Ui_widget_unusedFiltersItem):
+class JMLightOptimizerItem(QWidget, Ui_widget_lightOptimizerItem):
     """ Custom 'LightOptimizer' widget appended to UI. """
     def __init__(self, datas, populateFunction):
         """ Initialize JMLightOptimizerItem. """
@@ -2378,7 +2391,7 @@ def main(restore=False):
         omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(parent))
 
     else:
-        _lightToolkitWindow.show(dockable=True, minWidth=250, width=250, widthSizingProperty='minimum',
+        _lightToolkitWindow.show(dockable=True,
             uiScript='import jmLightToolkit\njmLightToolkit.main(restore=True)',
             closeCallback='import jmLightToolkit\njmLightToolkit.mainWindowClosed()' )
 

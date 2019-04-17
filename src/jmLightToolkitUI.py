@@ -1323,6 +1323,7 @@ class Ui_widget_root(object):
         self.pushButton_lightOptimizer_selectLights.setText(QtWidgets.QApplication.translate("widget_root", "Select Lights", None, -1))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_optimize), QtWidgets.QApplication.translate("widget_root", "Optimize", None, -1))
 
+
 class Ui_widget_lightOptimizerItem(object):
     def setupUi(self, widget_lightOptimizerItem):
         widget_lightOptimizerItem.setObjectName("widget_lightOptimizerItem")
@@ -1376,15 +1377,32 @@ class Ui_widget_lightOptimizerItem(object):
         self.label_attribute.setText(QtWidgets.QApplication.translate("widget_lightOptimizerItem", "attribute", None, -1))
         self.pushButton_setValue.setText(QtWidgets.QApplication.translate("widget_lightOptimizerItem", "Set Value", None, -1))
 
+
 class Ui_widget_unusedFiltersList(object):
     def setupUi(self, widget_unusedFiltersList):
         widget_unusedFiltersList.setObjectName("widget_unusedFiltersList")
-        widget_unusedFiltersList.resize(300, 500)
+        widget_unusedFiltersList.resize(300, 600)
         self.verticalLayout = QtWidgets.QVBoxLayout(widget_unusedFiltersList)
+        self.verticalLayout.setSpacing(9)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_2.setSpacing(0)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.label_disconnectedFilters = QtWidgets.QLabel(widget_unusedFiltersList)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label_disconnectedFilters.sizePolicy().hasHeightForWidth())
+        self.label_disconnectedFilters.setSizePolicy(sizePolicy)
+        self.label_disconnectedFilters.setMinimumSize(QtCore.QSize(0, 16))
+        font = QtGui.QFont()
+        font.setWeight(75)
+        font.setBold(True)
+        self.label_disconnectedFilters.setFont(font)
+        self.label_disconnectedFilters.setStyleSheet("background:rgb(20,230,150);")
+        self.label_disconnectedFilters.setIndent(5)
         self.label_disconnectedFilters.setObjectName("label_disconnectedFilters")
-        self.verticalLayout.addWidget(self.label_disconnectedFilters)
+        self.verticalLayout_2.addWidget(self.label_disconnectedFilters)
         self.listWidget_disconnectedFilters = QtWidgets.QListWidget(widget_unusedFiltersList)
         self.listWidget_disconnectedFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.listWidget_disconnectedFilters.setAlternatingRowColors(True)
@@ -1392,10 +1410,27 @@ class Ui_widget_unusedFiltersList(object):
         self.listWidget_disconnectedFilters.setFlow(QtWidgets.QListView.TopToBottom)
         self.listWidget_disconnectedFilters.setModelColumn(0)
         self.listWidget_disconnectedFilters.setObjectName("listWidget_disconnectedFilters")
-        self.verticalLayout.addWidget(self.listWidget_disconnectedFilters)
+        self.verticalLayout_2.addWidget(self.listWidget_disconnectedFilters)
+        self.verticalLayout.addLayout(self.verticalLayout_2)
+        self.verticalLayout_3 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_3.setSpacing(0)
+        self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.label_nullFilters = QtWidgets.QLabel(widget_unusedFiltersList)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label_nullFilters.sizePolicy().hasHeightForWidth())
+        self.label_nullFilters.setSizePolicy(sizePolicy)
+        self.label_nullFilters.setMinimumSize(QtCore.QSize(0, 16))
+        font = QtGui.QFont()
+        font.setWeight(75)
+        font.setBold(True)
+        self.label_nullFilters.setFont(font)
+        self.label_nullFilters.setStyleSheet("background:rgb(20,200,180);")
+        self.label_nullFilters.setMargin(0)
+        self.label_nullFilters.setIndent(5)
         self.label_nullFilters.setObjectName("label_nullFilters")
-        self.verticalLayout.addWidget(self.label_nullFilters)
+        self.verticalLayout_3.addWidget(self.label_nullFilters)
         self.listWidget_nullFilters = QtWidgets.QListWidget(widget_unusedFiltersList)
         self.listWidget_nullFilters.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.listWidget_nullFilters.setAlternatingRowColors(True)
@@ -1403,8 +1438,10 @@ class Ui_widget_unusedFiltersList(object):
         self.listWidget_nullFilters.setFlow(QtWidgets.QListView.TopToBottom)
         self.listWidget_nullFilters.setModelColumn(0)
         self.listWidget_nullFilters.setObjectName("listWidget_nullFilters")
-        self.verticalLayout.addWidget(self.listWidget_nullFilters)
+        self.verticalLayout_3.addWidget(self.listWidget_nullFilters)
+        self.verticalLayout.addLayout(self.verticalLayout_3)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setSpacing(6)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.pushButton_delete = QtWidgets.QPushButton(widget_unusedFiltersList)
         self.pushButton_delete.setMinimumSize(QtCore.QSize(0, 25))
@@ -1421,10 +1458,11 @@ class Ui_widget_unusedFiltersList(object):
 
     def retranslateUi(self, widget_unusedFiltersList):
         widget_unusedFiltersList.setWindowTitle(QtWidgets.QApplication.translate("widget_unusedFiltersList", "Form", None, -1))
-        self.label_disconnectedFilters.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "Disconnected filters", None, -1))
-        self.label_nullFilters.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "Null filters", None, -1))
+        self.label_disconnectedFilters.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "<html><head/><body><p><span style=\" color:#ffffff;\">Disconnected filters</span></p></body></html>", None, -1))
+        self.label_nullFilters.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "<html><head/><body><p><span style=\" color:#ffffff;\">Null filters</span></p></body></html>", None, -1))
         self.pushButton_delete.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "Delete", None, -1))
         self.pushButton_cancel.setText(QtWidgets.QApplication.translate("widget_unusedFiltersList", "Cancel", None, -1))
+
 
 class Ui_widget_unusedFiltersItem(object):
     def setupUi(self, widget_unusedFiltersItem):
