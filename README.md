@@ -1,4 +1,5 @@
-# jmLightToolkit
+# jmLightToolkit ![logo](https://github.com/JsnMertens/jmLightToolkit/blob/master/src/resources/icons/logo_jm_32.png)
+
 jmLightToolkit is a free toolkit in python I have written for managing lighting in Maya for my personal projects. Feel free to use it in your own projects or in production.
 *(Optimized for MtoA)*
 
