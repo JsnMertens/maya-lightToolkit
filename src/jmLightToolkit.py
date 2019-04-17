@@ -26,11 +26,14 @@ __version__     = '2.0'
 __email__       = 'mertens.jas@gmail.com'
 
 _lightToolkitWindow = None
-_lookThroughWindow = None
 _lightFiltersWindow = None
+_lookThroughWindow = None
 _logger = logging.getLogger(__name__)
 
-CUSTOM_IDX = 32
+CUSTOM_INDEX = 32
+TOOLKIT_NAME = "jmLightToolkit"
+FILTERS_NAME = "jmUnusedFilters"
+THROUGH_NAME = "jmLookThroughWindow"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if PROJECT_DIR not in sys.path:
@@ -43,14 +46,13 @@ from jmLightToolkitUI import Ui_widget_unusedFiltersItem
 
 
 class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
-    """ Main Light Toolkit UI. """
+    """ LightToolkit window. """
     def __init__(self, parent=None):
         """ Initialize JMLightToolkit """
         super(JMLightToolkit, self).__init__(parent=parent)
         self.setWindowFlags(QtCore.Qt.Tool)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
-        self.setWindowTitle(__name__)
-        self.setObjectName(__name__)
 
         self.displayed_layer_name = "displayedLights"
         self.muted_layer_name = "mutedLights"
@@ -261,8 +263,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
 
         self.pushButton_selectChildren.clicked.connect(self.selectChildren)
         self.pushButton_selectNotIlluminatingLights.clicked.connect(self.selectNotIlluminatingLights)
-        self.pushButton_deleteUnusedBlocker.clicked.connect(partial(JMUnusedLightFiltersUI, "aiLightBlocker", self.getUnusedLightFilters, self.deleteSafelyLightFilter))
-        self.pushButton_deleteUnusedDecay.clicked.connect(partial(JMUnusedLightFiltersUI, "aiLightDecay", self.getUnusedLightFilters, self.deleteSafelyLightFilter))
+        self.pushButton_deleteUnusedBlocker.clicked.connect(partial(self.getUnusedLightFilters, "aiLightBlocker"))
+        self.pushButton_deleteUnusedDecay.clicked.connect(partial(self.getUnusedLightFilters, "aiLightDecay"))
 
         self.horizontalSlider_lightOptimizer_min.valueChanged[int].connect(self.spinBox_lightOptimizer_min.setValue)
         self.spinBox_lightOptimizer_min.valueChanged[int].connect(self.horizontalSlider_lightOptimizer_min.setValue)
@@ -1748,12 +1750,14 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
                     null_filters.append(decay)
 
 
+        # Return if all filters is used
         if not disconnected_filters and not null_filters:
             _logger.info("All filters is used.")
             return None
 
-        else:
-            return {"disconnected" : disconnected_filters, "null" : null_filters, "type" : filter_name}
+        # Create unused light filters window
+        filters = {"disconnected" : disconnected_filters, "null" : null_filters, "type" : filter_name}
+        createUnusedFiltersWindow(filters, self.deleteSafelyLightFilter)
 
     def deleteSafelyLightFilter(self, filters):
         """ Delete safely unused Arnold light filter.
@@ -1825,7 +1829,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
         # Get lightname from list
         lights = []
         for item in self.listWidget_lightOptimizer.selectedItems():
-            datas = item.data(CUSTOM_IDX)
+            datas = item.data(CUSTOM_INDEX)
             lights.append(pm.PyNode(datas["lightname"]))
 
         # Get transform
@@ -1841,7 +1845,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
         lights = []
 
         for item in self.listWidget_lightOptimizer.selectedItems():
-            datas = item.data(CUSTOM_IDX)
+            datas = item.data(CUSTOM_INDEX)
             light_node = pm.PyNode("%s.%s" % (datas["lightname"], datas["attribute"]))
             lights.append(light_node)
 
@@ -1928,7 +1932,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
 
             list_widget_item = QtWidgets.QListWidgetItem()
             list_widget_item.setSizeHint(item_ui.sizeHint())
-            list_widget_item.setData(CUSTOM_IDX, item)
+            list_widget_item.setData(CUSTOM_INDEX, item)
 
             self.listWidget_lightOptimizer.addItem(list_widget_item)
             self.listWidget_lightOptimizer.setItemWidget(list_widget_item, item_ui)
@@ -2099,21 +2103,20 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
 
 
 class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
-    """ Create Look through window. """
+    """ LookThrough window. """
     def __init__(self):
         """ Initialize JMLookThroughWindow. """
         super(JMLookThroughWindow, self).__init__(parent=None)
         self.setWindowFlags(QtCore.Qt.Tool)
-        self.setWindowTitle("JMLookThroughWindow")
-        self.setObjectName("JMLookThroughWindow")
-
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setObjectName(THROUGH_NAME)
         self.starting_size = QtCore.QSize(300, 300)
         self.minimum_size = QtCore.QSize(100, 100)
         self.preferredSize = self.starting_size
         self.resize(self.preferredSize)
         self.panel = None
 
-        self.deleteLookedThroughCam()
+        self.deleteThroughCam()
 
         # Create Panel layout
         layout = QtWidgets.QVBoxLayout()
@@ -2154,9 +2157,9 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
     def dockCloseEventTriggered(self):
         global _lookThroughWindow
         _lookThroughWindow = None
-        self.deleteLookedThroughCam()
+        self.deleteThroughCam()
 
-    def deleteLookedThroughCam(self):
+    def deleteThroughCam(self):
         """ Delete Camera created by looktrough """
         looked_through = _lightToolkitWindow._isLookThrough()
         if looked_through is not None:
@@ -2166,7 +2169,7 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
         """ Select light from look through window """
         pm.select(self.lightname)
 
-    def lookThroughLightSelected(self):
+    def lookThroughSelectedLight(self):
         self.lightname = None
         selected = _lightToolkitWindow._onlyLightsFromSelection()
         if selected:
@@ -2184,6 +2187,77 @@ class JMLookThroughWindow(MayaQWidgetDockableMixin, QWidget):
 
         else:
             self.setWindowTitle("NO LIGHT")
+
+
+class JMUnusedLightFiltersWindow(MayaQWidgetDockableMixin, QWidget, Ui_widget_unusedFiltersList):
+    """ Unused light filters window. """
+    def __init__(self, filters, deleteFiltersFunc, parent=None):
+        """ Initialize JMUnusedLightFiltersWindow """
+        super(JMUnusedLightFiltersWindow, self).__init__(parent=parent)
+        self.setWindowFlags(QtCore.Qt.Tool)
+        self.setupUi(self)
+        self.setWindowTitle(FILTERS_NAME)
+        self.setObjectName(FILTERS_NAME)
+
+        self.filter_type = filters["type"]
+        self.null_filters = filters["null"]
+        self.disconnected_filters = filters["disconnected"]
+        self.deleteSafelyLightFilter = deleteFiltersFunc
+
+        # Attributes
+        self.label_disconnectedFilters.setText("Disconnected %s :" % self.filter_type)
+        self.label_nullFilters.setText("Null %s :" % self.filter_type)
+
+        # Connect Methods to UI
+        self.pushButton_delete.clicked.connect(self.deleteSelectedFilters)
+        self.pushButton_delete.clicked.connect(self.deleteLater)
+        self.pushButton_cancel.clicked.connect(self.deleteLater)
+
+        # Pre-build Methods
+        self.__populateList()
+
+    def getSelectedFilters(self):
+        """ Get lighfilters name from selected items. """
+        filters_to_delete = { "disconnected" : [], "null" : [] , "type" : self.filter_type}
+        for item in self.listWidget_disconnectedFilters.selectedItems():
+            filter_name = item.data(CUSTOM_INDEX)
+            filters_to_delete["disconnected"].append(filter_name)
+
+        for item in self.listWidget_nullFilters.selectedItems():
+            filter_name = item.data(CUSTOM_INDEX)
+            filters_to_delete["null"].append(filter_name)
+
+        return filters_to_delete
+
+    def deleteSelectedFilters(self):
+        filters = self.getSelectedFilters()
+        self.deleteSafelyLightFilter(filters)
+
+    def __populateList(self):
+        """ Populate 'Disconnected' and 'Null' list widget. """
+        if self.disconnected_filters:
+            for filter in self.disconnected_filters:
+                item_ui = JMUnusedLightFiltersItem(filter.name())
+
+                list_widget_item = QtWidgets.QListWidgetItem()
+                list_widget_item.setSizeHint(item_ui.sizeHint())
+                list_widget_item.setData(CUSTOM_INDEX, filter.name())
+
+                self.listWidget_disconnectedFilters.addItem(list_widget_item)
+                self.listWidget_disconnectedFilters.setItemWidget(list_widget_item, item_ui)
+
+        if self.null_filters:
+            for filter in self.null_filters:
+                item_ui = JMUnusedLightFiltersItem(filter.name())
+
+                list_widget_item = QtWidgets.QListWidgetItem()
+                list_widget_item.setSizeHint(item_ui.sizeHint())
+                list_widget_item.setData(CUSTOM_INDEX, filter.name())
+
+                self.listWidget_nullFilters.addItem(list_widget_item)
+                self.listWidget_nullFilters.setItemWidget(list_widget_item, item_ui)
+
+        return True
 
 
 class JMLightOptimizerItem(QWidget, Ui_widget_unusedFiltersItem):
@@ -2231,89 +2305,6 @@ class JMLightOptimizerItem(QWidget, Ui_widget_unusedFiltersItem):
         _logger.info("value : {0}, attribute : {1}, light : {2}".format(value, self.attribute, self.lightname))
 
 
-class JMUnusedLightFiltersUI(MayaQWidgetDockableMixin, QWidget, Ui_widget_unusedFiltersList):
-    """ Unused light filters UI. """
-    def __init__(self, filter_type, getFilters, deleteFilters, parent=None):
-        """ Initialize JMUnusedLightFiltersUI """
-        super(JMUnusedLightFiltersUI, self).__init__(parent=parent)
-        self.setWindowFlags(QtCore.Qt.Tool)
-        self.setupUi(self)
-        self.setWindowTitle(__name__ + "- Unused lights filters")
-        self.setObjectName(__name__ + "LightFilters")
-
-        # Inheritance
-        self.filter_type = filter_type
-        self.getUnusedLightFilters = getFilters
-        self.deleteSafelyLightFilter = deleteFilters
-
-        # Attributes
-        self.label_disconnectedFilters.setText("Disconnected %s :" % self.filter_type)
-        self.label_nullFilters.setText("Null %s :" % self.filter_type)
-
-        # Connect Methods to UI
-        self.pushButton_delete.clicked.connect(self.deleteSelectedFilters)
-        self.pushButton_delete.clicked.connect(self.deleteLater)
-        self.pushButton_cancel.clicked.connect(self.deleteLater)
-
-        # Pre-build Methods
-        if self.__populateList():
-            self.show()
-
-    def getSelectedFilters(self):
-        """ Get lighfilters name from selected items. """
-        filters_to_delete = { "disconnected" : [], "null" : [] , "type" : self.filter_type}
-        for item in self.listWidget_disconnectedFilters.selectedItems():
-            filter_name = item.data(CUSTOM_IDX)
-            filters_to_delete["disconnected"].append(filter_name)
-
-        for item in self.listWidget_nullFilters.selectedItems():
-            filter_name = item.data(CUSTOM_IDX)
-            filters_to_delete["null"].append(filter_name)
-
-        return filters_to_delete
-
-    def deleteSelectedFilters(self):
-        filters = self.getSelectedFilters()
-        self.deleteSafelyLightFilter(filters)
-
-    def __populateList(self):
-        """ Populate 'Disconnected' and 'Null' list widget. """
-        # Get filters
-        filters = self.getUnusedLightFilters(self.filter_type)
-
-        # Check list
-        if filters is None:
-            return None
-
-        elif not filters["disconnected"] and not filters["null"]:
-            return None
-
-        # Populate Disconnect filters
-        if filters["disconnected"]:
-            for filter in filters["disconnected"]:
-                item_ui = JMUnusedLightFiltersItem(filter.name())
-
-                list_widget_item = QtWidgets.QListWidgetItem()
-                list_widget_item.setSizeHint(item_ui.sizeHint())
-                list_widget_item.setData(CUSTOM_IDX, filter.name())
-
-                self.listWidget_disconnectedFilters.addItem(list_widget_item)
-                self.listWidget_disconnectedFilters.setItemWidget(list_widget_item, item_ui)
-
-        if filters["null"]:
-            for filter in filters["null"]:
-                item_ui = JMUnusedLightFiltersItem(filter.name())
-
-                list_widget_item = QtWidgets.QListWidgetItem()
-                list_widget_item.setSizeHint(item_ui.sizeHint())
-                list_widget_item.setData(CUSTOM_IDX, filter.name())
-
-                self.listWidget_nullFilters.addItem(list_widget_item)
-                self.listWidget_nullFilters.setItemWidget(list_widget_item, item_ui)
-
-        return True
-
-
 class JMUnusedLightFiltersItem(QWidget, Ui_widget_unusedFiltersItem):
     """ List disconnected and null light filters in list. """
     def __init__(self, filter_name):
@@ -2333,7 +2324,7 @@ class JMUnusedLightFiltersItem(QWidget, Ui_widget_unusedFiltersItem):
         _logger.info("select : %s" % self.filter_name )
 
 
-def promptDialogMtoA():
+def loadMtoA():
     """ Prompt a dialog and ask if you want load MtoA. """
     if not pm.pluginInfo("mtoa", q=True, loaded=True):
         message = "MtoA is not loaded, do you want to load it?"
@@ -2341,85 +2332,124 @@ def promptDialogMtoA():
             defaultButton='Yes', cancelButton='No', dismissString='No')
 
         if status == "Yes":
-            try:
-                pm.loadPlugin("mtoa")
-            except RuntimeError,e:
-                _logger.warning(e)
+            try: pm.loadPlugin("mtoa")
+            except RuntimeError, e: _logger.warning(e)
 
-def _lookThroughWindowClosed():
-    """ Close Callback lookthrough UI. """
-    global _lookThroughWindow
-    if _lookThroughWindow:
-        _lookThroughWindow.deleteLookedThroughCam()
-        _lookThroughWindow = None
-
-def createLookThroughWindow(restore=False):
-    """ Run LookThrough UI. """
-    global _lookThroughWindow
-
-    if _lightToolkitWindow is None:
-        return
-
-    if not _lightToolkitWindow._onlyLightsFromSelection():
-        return
-
-    control = "JMLookThroughWindow" + "WorkspaceControl"
-    if pm.workspaceControl(control, q=True, exists=True) and _lookThroughWindow is None:
-        pm.workspaceControl(control, e=True, close=True)
-        pm.deleteUI(control)
-
-    if restore:
-        restored_control = omui.MQtUtil.getCurrentParent()
-
-    if _lookThroughWindow is None:
-        _lookThroughWindow = JMLookThroughWindow()
-
-    if restore:
-        mixinPtr = omui.MQtUtil.findControl(_lookThroughWindow.objectName())
-        omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(restored_control))
-    else:
-        required_control = _lightToolkitWindow.objectName() + 'WorkspaceControl'
-        _lookThroughWindow.show(dockable=True, controls=required_control,
-            uiScript='import jmLightToolkit\njmLightToolkit.createLookThroughWindow(restore=True)',
-            closeCallback='import jmLightToolkit\njmLightToolkit._lookThroughWindowClosed()')
-
-    _lookThroughWindow.lookThroughLightSelected()
-    return _lookThroughWindow
+def saveWindowState(editor, optionVar):
+    windowState = editor.showRepr()
+    cmds.optionVar(sv=(optionVar, windowState))
 
 def mainWindowClosed():
-    """ Close Callback JMLightToolkit UI. """
+    """ Hook up callback when the main window is closed. """
     global _lightToolkitWindow
     global _lookThroughWindow
     global _lightFiltersWindow
+
     if _lightToolkitWindow:
         _lightToolkitWindow = None
         _lookThroughWindow = None
         _lightFiltersWindow = None
 
+def mainWindowChanged():
+    """ Hook up callback when the main window is moved and resized. """
+    global _lightToolkitWindow
+    saveWindowState(_lightToolkitWindow, TOOLKIT_NAME + "State")
+
 def main(restore=False):
-    """ Run JMLightToolkit UI. """
-    promptDialogMtoA()
+    """ Show main Window. """
+    loadMtoA()
     global _lightToolkitWindow
 
     if not restore:
-        control = __name__ + "WorkspaceControl"
+        control = TOOLKIT_NAME + "WorkspaceControl"
         if pm.workspaceControl(control, q=True, exists=True) and _lightToolkitWindow is None:
             pm.workspaceControl(control, e=True, close=True)
             pm.deleteUI(control)
 
     if restore:
-        restored_control = omui.MQtUtil.getCurrentParent()
+        parent = omui.MQtUtil.getCurrentParent()
 
     if _lightToolkitWindow is None:
         _lightToolkitWindow = JMLightToolkit()
+        _lightToolkitWindow.setObjectName(TOOLKIT_NAME)
 
     if restore:
         mixinPtr = omui.MQtUtil.findControl(_lightToolkitWindow.objectName())
-        omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(restored_control))
+        omui.MQtUtil.addWidgetToMayaLayout(long(mixinPtr), long(parent))
 
     else:
-        _lightToolkitWindow.show(dockable=True, minWidth=300, width=400, widthSizingProperty='minimum',
+        _lightToolkitWindow.show(dockable=True, minWidth=250, width=250, widthSizingProperty='minimum',
             uiScript='import jmLightToolkit\njmLightToolkit.main(restore=True)',
             closeCallback='import jmLightToolkit\njmLightToolkit.mainWindowClosed()' )
 
+    _lightToolkitWindow.setWindowTitle(TOOLKIT_NAME)
     return _lightToolkitWindow
+
+def lookThroughWindowClosed():
+    """ Hook up callback when the through window is closed. """
+    global _lookThroughWindow
+
+    if _lookThroughWindow:
+        _lookThroughWindow.deleteThroughCam()
+        _lookThroughWindow = None
+
+def lookThroughWindowChanged():
+    """ Hook up callback when the through window is moved and resized. """
+    global _lookThroughWindow
+    saveWindowState(_lookThroughWindow, THROUGH_NAME + "State")
+
+def createLookThroughWindow():
+    """ Show through Window. """
+    global _lookThroughWindow
+
+    if (_lightToolkitWindow is None) and not (_lightToolkitWindow._onlyLightsFromSelection()):
+        return None
+
+    control = THROUGH_NAME + "WorkspaceControl"
+    if pm.workspaceControl(control, q=True, exists=True) and _lookThroughWindow is None:
+        pm.workspaceControl(control, e=True, close=True)
+        pm.deleteUI(control)
+
+    if _lookThroughWindow is None:
+        _lookThroughWindow = JMLookThroughWindow()
+        _lookThroughWindow.windowStateChanged.connect(lookThroughWindowChanged)
+
+    required_control = _lightToolkitWindow.objectName() + 'WorkspaceControl'
+    _lookThroughWindow.show(dockable=True, controls=required_control,
+        closeCallback='import jmLightToolkit\njmLightToolkit.lookThroughWindowClosed()')
+
+    _lookThroughWindow.lookThroughSelectedLight()
+    return _lookThroughWindow
+
+def unusedFiltersWindowClosed():
+    """ Hook up callback when the unused light filters window is closed. """
+    global _lightFiltersWindow
+    if _lightFiltersWindow:
+        _lightFiltersWindow = None
+
+def unusedFiltersWindowChanged():
+    """ Hook up callback when the unused light filters window is moved and resized. """
+    global _lightFiltersWindow
+    saveWindowState(_lightFiltersWindow, FILTERS_NAME + "State")
+
+def createUnusedFiltersWindow(filters, deleteFiltersFunc):
+    """ Show unused light filters Window. """
+    global _lightFiltersWindow
+
+    if _lightToolkitWindow is None:
+        return None
+
+    control = FILTERS_NAME + "WorkspaceControl"
+    if pm.workspaceControl(control, q=True, exists=True) and _lightFiltersWindow is None:
+        pm.workspaceControl(control, e=True, close=True)
+        pm.deleteUI(control)
+
+    if _lightFiltersWindow is None:
+        _lightFiltersWindow = JMUnusedLightFiltersWindow(filters, deleteFiltersFunc)
+        _lightFiltersWindow.windowStateChanged.connect(unusedFiltersWindowChanged)
+
+    required_control = _lightToolkitWindow.objectName() + 'WorkspaceControl'
+    _lightFiltersWindow.show(dockable=True, controls=required_control,
+        closeCallback='import jmLightToolkit\njmLightToolkit.unusedFiltersWindowClosed()')
+
+    return _lightFiltersWindow
