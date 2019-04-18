@@ -13,7 +13,7 @@ To get it recognize by maya you need to add the following line in the **maya.env
 
 3. Drag and drop the *"install.py"* file onto the Maya viewport.
 
-Note: Maya.env file is located to *C:\Users\USERNAME\Documents\maya\20##\Maya.env*
+Note: **Maya.env** file is located to *C:\Users\USERNAME\Documents\maya\20##\Maya.env*
 
 ---
 
