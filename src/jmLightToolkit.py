@@ -1181,7 +1181,7 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
 
         # Get Blockers
         blockers = []
-        for sel in save_selected:
+        for sel in pm.selected():
             if pm.nodeType(sel.name()) == "transform":
                 if pm.nodeType(sel.getShape().name()) == "aiLightBlocker":
                     blockers.append(sel)
