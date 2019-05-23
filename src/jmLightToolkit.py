@@ -16,6 +16,7 @@ import pymel.core as pm
 import logging
 import os
 import sys
+import sys
 import math
 import re
 
@@ -913,7 +914,10 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
 
     def openArnoldRenderView(self):
         """ Open Arnold Render View. """
-        pm.mel.eval("cmdArnoldMtoARenderView")
+        if "linux" in sys.platform:
+            pm.mel.eval("arnoldRenderView")
+        elif "win" in sys.platform:
+            pm.mel.eval("cmdArnoldMtoARenderView")
 
     @_wrapperUndoChunck
     def transfertLightFilters(self):
