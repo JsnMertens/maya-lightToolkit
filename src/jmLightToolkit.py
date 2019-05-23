@@ -424,25 +424,8 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
             self.pushButton_soloLights_hierarchy.setStyleSheet(self.default_stylesheet)
             self.pushButton_soloLights_hierarchy.setIcon(self.icon_hierarchy_off)
 
-    @_wrapperUndoChunck
-    def lookThrough(self):
-        """ Light lookthrough. """
-        # If already Through, delete cam
-        looked_through = self._isLookThrough()
-        if looked_through is not None:
-            pm.delete(looked_through)
-            self.__lookThroughCSS()
-            return
-
-        # Return is no light found in selection
-        if not self._onlyLightsFromSelection():
-            return None
-
-        # Look Through Window
-        if self.pushButton_lookThroughWindow.isChecked():
-            createLookThroughWindow()
-            return
-
+    def getPanels(self):
+        """ Get current viewport panel. """
         # Get Panel, if persp found, throught this cam
         all_panels = [ui for ui in pm.getPanel(vis=True) if "modelPanel" in ui.name()]
         current_panel = None
@@ -458,6 +441,39 @@ class JMLightToolkit(MayaQWidgetDockableMixin, QWidget, Ui_widget_root):
                     break
             else:
                 current_panel = all_panels[-1]
+        
+        return current_panel
+
+
+    @_wrapperUndoChunck
+    def lookThrough(self):
+        """ Light lookthrough. """
+        # Get panels 
+        current_panel = self.getPanels()
+
+        # If already Through, delete cam
+        looked_through = self._isLookThrough()
+        if looked_through is not None:
+            pm.delete(looked_through)
+            self.__lookThroughCSS()
+
+            # Looktrough persp
+            persp_cam = [cam for cam in  pm.ls(ca=True) if "persp" in cam.name()]
+            if persp_cam:
+                persp_cam = persp_cam[0].getParent().name()
+                cmd = "lookThroughModelPanelClipped(\"" + persp_cam + "\", \"" + current_panel + "\", 0.001, 10000)"
+                pm.mel.eval(cmd)
+
+            return
+
+        # Return is no light found in selection
+        if not self._onlyLightsFromSelection():
+            return None
+
+        # Look Through Window
+        if self.pushButton_lookThroughWindow.isChecked():
+            createLookThroughWindow()
+            return
 
         # See Trough
         lights = self._onlyLightsFromSelection()
